@@ -35,32 +35,22 @@
 <body>
 
 <div class="edit-panel">
-    <h3>✨ 菜單內容管理 (BlingOrder)</h3>
-    
+    <h3>✨ 菜單內容管理 (BlingOrder 正式版)</h3>
     <input type="hidden" id="edit-id">
     
-    <label>商品分類</label>
-    <input type="text" id="category" placeholder="分類 (例如：咖啡、甜點、氣泡飲)">
-    
-    <label>餐點名稱</label>
-    <input type="text" id="name" placeholder="請輸入餐點名稱">
-    
-    <label>價格 (TWD)</label>
-    <input type="number" id="price" placeholder="例如：120">
-    
-    <label>圖片路徑/網址</label>
-    <input type="text" id="image-path" placeholder="請貼上圖片連結">
-    
-    <label>工作人員警語 (不會顯示給客人看)</label>
-    <input type="text" id="staff-note" placeholder="提醒內場注意的事項...">
+    <input type="text" id="category" placeholder="分類 (例如：月下小食 · 昭和串燒)">
+    <input type="text" id="name" placeholder="餐點名稱 (例如：森之香 · 香菇串)">
+    <input type="number" id="price" placeholder="價格">
+    <input type="text" id="image-path" placeholder="圖片路徑 (例如：images/A00-(1).jpg)">
+    <input type="text" id="staff-note" placeholder="工作人員警語">
 
     <div class="sold-out-box">
         <input type="checkbox" id="is-sold-out" style="width:18px; height:18px; cursor:pointer;">
-        <label for="is-sold-out" style="color:#d32f2f; font-weight:bold; cursor:pointer;">🔴 設定為「今日已售完」 (勾選後前台無法點餐)</label>
+        <label for="is-sold-out" style="color:#d32f2f; font-weight:bold; cursor:pointer;">🔴 設定為「今日已售完」</label>
     </div>
 
     <div class="addon-section">
-        <strong>客製化/飲食標記：</strong><br>
+        <strong>客製化選項：</strong><br>
         <label><input type="checkbox" class="addon" value="冰"> 冰</label>
         <label><input type="checkbox" class="addon" value="去冰"> 去冰</label>
         <label><input type="checkbox" class="addon" value="熱"> 熱</label>
@@ -73,10 +63,10 @@
 
     <div style="margin: 15px 0;">
         <label>餐點介紹：</label><br>
-        <textarea id="description" rows="4" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:15px; margin-top:5px;" placeholder="寫下好吃的秘密、或是給客人的甜度建議..."></textarea>
+        <textarea id="description" rows="4" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:15px;" placeholder="請填寫內容介紹..."></textarea>
     </div>
 
-    <button class="btn-save" id="save-btn" onclick="saveItem()">儲存並發布菜單 ✨</button>
+    <button class="btn-save" id="save-btn" onclick="saveItem()">儲存並發布 ✨</button>
 </div>
 
 <table>
@@ -87,7 +77,7 @@
 </table>
 
 <script>
-    // 1. Firebase 初始化 (正式資料庫 blingorder)
+    // 這裡已修正為你截圖中的 blingorder 正式資料庫
     const firebaseConfig = {
         apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
         authDomain: "blingorder.firebaseapp.com",
@@ -98,7 +88,6 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 2. 儲存/更新 功能
     function saveItem() {
         const id = document.getElementById('edit-id').value || Date.now().toString();
         const addons = [];
@@ -115,29 +104,26 @@
             isSoldOut: document.getElementById('is-sold-out').checked
         };
 
-        if(!data.name || !data.price) return alert("名稱與價格為必填！");
+        if(!data.name || !data.price) return alert("名稱與價格必填！");
 
         db.ref('menu/' + id).set(data).then(() => {
-            alert("✅ 菜單更新成功！");
+            alert("已成功儲存到正式資料庫！");
             clearForm();
-        }).catch(err => alert("❌ 儲存失敗：" + err.message));
+        });
     }
 
-    // 3. 監聽菜單數據並更新表格
     db.ref('menu').on('value', snap => {
         const tbody = document.getElementById('menu-tbody');
         tbody.innerHTML = "";
         snap.forEach(child => {
             const i = child.val();
             const statusColor = i.isSoldOut ? 'background:#ffebee; color:#d32f2f;' : 'background:#e8f5e9; color:#2e7d32;';
-            const statusText = i.isSoldOut ? '已售完' : '供餐中';
-            
             tbody.innerHTML += `
                 <tr>
                     <td>${i.category}</td>
-                    <td><img src="${i.image}" width="50" height="50" style="object-fit:cover; border-radius:5px;" onerror="this.src='https://placehold.co/100?text=None'"></td>
+                    <td><img src="${i.image}" width="50" height="50" style="object-fit:cover; border-radius:5px;"></td>
                     <td><b>${i.name}</b><br><small>$${i.price}</small></td>
-                    <td><span class="status-tag" style="${statusColor}">${statusText}</span></td>
+                    <td><span class="status-tag" style="${statusColor}">${i.isSoldOut ? '已售完' : '供餐中'}</span></td>
                     <td>
                         <div class="action-btns">
                             <button class="btn-action btn-edit" onclick="startEdit('${child.key}')">修改</button>
@@ -148,7 +134,6 @@
         });
     });
 
-    // 4. 修改功能：把資料填回表單
     function startEdit(id) {
         db.ref('menu/' + id).once('value', snap => {
             const i = snap.val();
@@ -160,37 +145,24 @@
             document.getElementById('staff-note').value = i.staffNote || '';
             document.getElementById('description').value = i.description || '';
             document.getElementById('is-sold-out').checked = i.isSoldOut || false;
-            
             document.querySelectorAll('.addon').forEach(cb => {
                 cb.checked = (i.addons || []).includes(cb.value);
             });
-            
-            document.getElementById('save-btn').innerText = "更新現有餐點 ✨";
+            document.getElementById('save-btn').innerText = "更新資料 ✨";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     }
 
-    // 5. 刪除功能
     function deleteItem(id) {
-        if(confirm("⚠️ 確定要徹底刪除這項餐點嗎？\n刪除後無法復原，請確認！")) {
-            db.ref('menu/' + id).remove().then(() => alert("已從菜單中移除。"));
-        }
+        if(confirm("確定刪除？")) db.ref('menu/' + id).remove();
     }
 
-    // 輔助：清空表單
     function clearForm() {
         document.getElementById('edit-id').value = "";
-        document.getElementById('category').value = "";
-        document.getElementById('name').value = "";
-        document.getElementById('price').value = "";
-        document.getElementById('image-path').value = "";
-        document.getElementById('staff-note').value = "";
-        document.getElementById('description').value = "";
-        document.getElementById('is-sold-out').checked = false;
-        document.querySelectorAll('.addon').forEach(cb => cb.checked = false);
-        document.getElementById('save-btn').innerText = "儲存並發布菜單 ✨";
+        document.getElementById('save-btn').innerText = "儲存並發布 ✨";
+        // 這裡可以手動清空其他欄位，或 location.reload();
+        location.reload();
     }
 </script>
-
 </body>
 </html>
