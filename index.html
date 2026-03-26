@@ -3,86 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 專業點餐</title>
+    <title>BlingOrder | 九宮格分類版</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --soft-pink: #fbcfe8; --price-orange: #ff5722; }
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f8f8f8; margin: 0; padding-bottom: 80px; }
+        :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --price-orange: #ff5722; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 80px; }
         
-        .header { background: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #eee; }
-        .table-info { font-size: 16px; color: var(--accent-pink); font-weight: bold; }
+        .header { background: white; padding: 10px; text-align: center; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
+        
+        /* 1. 分類導覽列 */
+        .category-bar { background: white; padding: 10px; overflow-x: auto; white-space: nowrap; display: flex; gap: 10px; border-bottom: 1px solid #eee; position: sticky; top: 60px; z-index: 90; }
+        .cat-btn { padding: 8px 18px; background: #f0f0f0; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
+        .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
 
-        /* 圖1：九宮格目錄 */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 15px; }
-        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; }
-        .grid-img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; background: #eee; }
-        .grid-info { padding: 10px; text-align: center; }
-        .grid-info h3 { margin: 0; font-size: 16px; color: #333; height: 44px; overflow: hidden; }
-        .grid-info .price { margin-top: 5px; color: var(--price-orange); font-weight: bold; font-size: 18px; }
+        /* 九宮格 */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+        .grid-item { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
+        .grid-info { padding: 8px; text-align: center; }
+        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; }
+        .grid-info .price { color: var(--price-orange); font-weight: bold; margin-top: 5px; }
 
-        /* 圖2：詳情頁彈窗 (全螢幕) */
+        /* 詳情頁詳情 */
         #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; overflow-y: auto; }
-        .detail-header { position: relative; width: 100%; }
-        .close-btn { position: absolute; top: 20px; left: 20px; width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; z-index: 10; border: 1px solid #ddd; }
-        .detail-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: #f0f0f0; }
-        .detail-content { padding: 20px; }
-        .detail-title { font-size: 22px; font-weight: bold; margin-bottom: 5px; }
-        .detail-price { font-size: 24px; color: var(--price-orange); font-weight: bold; margin-bottom: 20px; }
+        .close-btn { position: absolute; top: 15px; left: 15px; width: 35px; height: 35px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 10; font-size: 20px; }
+        .detail-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+        .detail-body { padding: 20px; }
         
-        .option-group { margin-bottom: 20px; }
-        .option-title { font-weight: bold; font-size: 16px; margin-bottom: 10px; color: #555; background: #f5f5f5; padding: 5px 10px; border-radius: 4px; }
-        .option-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; cursor: pointer; }
-        .option-item input { width: 20px; height: 20px; accent-color: var(--price-orange); }
+        .opt-box { margin-top: 20px; border-top: 1px solid #eee; }
+        .opt-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f9f9f9; align-items: center; }
+        .opt-item input { width: 18px; height: 18px; accent-color: var(--price-orange); }
 
-        /* 詳情頁底部按鈕 */
-        .detail-footer { position: sticky; bottom: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; align-items: center; gap: 15px; }
-        .qty-ctrl { display: flex; align-items: center; gap: 15px; font-size: 20px; font-weight: bold; }
-        .qty-btn { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 20px; cursor: pointer; }
-        .add-cart-btn { flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; }
-
-        /* 懸浮購物車(圖1顯示) */
-        .cart-float { position: fixed; bottom: 20px; right: 20px; background: var(--accent-pink); color: white; padding: 15px 25px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); font-weight: bold; z-index: 100; cursor: pointer; }
+        .footer { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #eee; padding: 15px; display: flex; align-items: center; box-sizing: border-box; z-index: 100; }
+        .add-btn { flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; }
+        .qty-area { display: flex; align-items: center; gap: 15px; margin-right: 15px; font-size: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
-
-    <div class="header">
-        <h2 style="margin:0; color: var(--accent-pink);">💎 BlingOrder</h2>
-        <div id="displayTable" class="table-info">載入桌號中...</div>
-    </div>
+    <div class="header"><h3 style="margin:0; color: var(--accent-pink);">💎 BlingOrder</h3><div id="displayTable"></div></div>
+    <div id="catBar" class="category-bar"></div>
     <div id="menuGrid" class="menu-grid"></div>
-    <div class="cart-float" onclick="submitOrder()">🛒 送出訂單 (<span id="cartCount">0</span>)</div>
-
+    
     <div id="detailPage">
-        <div class="detail-header">
-            <div class="close-btn" onclick="closeDetail()">✕</div>
-            <img id="dImg" class="detail-img" src="">
+        <div class="close-btn" onclick="closeDetail()">✕</div>
+        <img id="dImg" class="detail-img">
+        <div class="detail-body">
+            <h2 id="dTitle" style="margin:0"></h2>
+            <div id="dPrice" style="color:var(--price-orange); font-size:22px; font-weight:bold; margin:10px 0;"></div>
+            <div id="optContainer" class="opt-box"></div>
         </div>
-        <div class="detail-content">
-            <div id="dTitle" class="detail-title">品項名稱</div>
-            <div id="dNote" style="color:#888; font-size:14px; margin-bottom:10px;">*備註說明</div>
-            <div id="dPrice" class="detail-price">$0</div>
-
-            <div class="option-group">
-                <div class="option-title">加料更美味 (可多選)</div>
-                <div class="option-item" onclick="toggleCheckbox('opt-egg')">
-                    <span>加蛋 (+$15)</span>
-                    <input type="checkbox" id="opt-egg" data-p="15">
-                </div>
-                <div class="option-item" onclick="toggleCheckbox('opt-cheese')">
-                    <span>加起司 (+$10)</span>
-                    <input type="checkbox" id="opt-cheese" data-p="10">
-                </div>
-            </div>
-        </div>
-        <div class="detail-footer">
-            <div class="qty-ctrl">
-                <button class="qty-btn" onclick="changeQty(-1)">-</button>
+        <div class="footer">
+            <div class="qty-area">
+                <button style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;" onclick="changeQty(-1)">-</button>
                 <span id="dQty">1</span>
-                <button class="qty-btn" onclick="changeQty(1)">+</button>
+                <button style="width:30px;height:30px;border-radius:50%;border:1px solid #ccc;" onclick="changeQty(1)">+</button>
             </div>
-            <button class="add-cart-btn" onclick="confirmAddToCart()">加入購物車 • $<span id="dSubtotal">0</span></button>
+            <button class="add-btn" onclick="addToCart()">加入購物車 • $<span id="dTotal">0</span></button>
         </div>
     </div>
 
@@ -90,112 +67,95 @@
         const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const tableNum = new URLSearchParams(window.location.search).get('table') || "未知";
+        document.getElementById('displayTable').innerText = (tableNum==="7"?"💎包廂":tableNum+"號桌");
 
-        const urlParams = new URLSearchParams(window.location.search);
-        let tableNum = urlParams.get('table') || "未知";
-        document.getElementById('displayTable').innerText = (tableNum === "7") ? "💎 包廂" : tableNum + " 號桌";
+        let allMenu = [];
+        let currentCat = "全部";
+        let curItem = null, curQty = 1, cart = [];
 
-        let cart = [];
-        let currentItem = null;
-        let currentQty = 1;
+        db.ref('menu').on('value', snap => {
+            allMenu = [];
+            snap.forEach(c => allMenu.push({...c.val(), id: c.key}));
+            renderCats();
+            renderGrid();
+        });
 
-        // 讀取菜單並渲染九宮格
-        function loadMenu() {
-            db.ref('menu').on('value', (snapshot) => {
-                const grid = document.getElementById('menuGrid');
-                grid.innerHTML = '';
-                snapshot.forEach((child) => {
-                    const item = child.val();
-                    const id = child.key;
-                    grid.innerHTML += `
-                        <div class="grid-item" onclick='openDetail(${JSON.stringify({...item, id})})'>
-                            <img src="${item.image || 'https://placehold.co/200x200'}" class="grid-img">
-                            <div class="grid-info">
-                                <h3>${item.name}</h3>
-                                <div class="price">$${item.price}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-            });
+        function renderCats() {
+            const cats = ["全部", ...new Set(allMenu.map(i => i.category))];
+            document.getElementById('catBar').innerHTML = cats.map(c => `
+                <button class="cat-btn ${currentCat===c?'active':''}" onclick="filterCat('${c}')">${c}</button>
+            `).join('');
         }
 
-        // 開啟詳情頁 (圖2)
+        function filterCat(c) { currentCat = c; renderCats(); renderGrid(); }
+
+        function renderGrid() {
+            const filtered = currentCat === "全部" ? allMenu : allMenu.filter(i => i.category === currentCat);
+            document.getElementById('menuGrid').innerHTML = filtered.map(i => `
+                <div class="grid-item" onclick='openDetail(${JSON.stringify(i)})'>
+                    <img src="${i.image}" class="grid-img">
+                    <div class="grid-info"><h3>${i.name}</h3><div class="price">$${i.price}</div></div>
+                </div>
+            `).join('');
+        }
+
         function openDetail(item) {
-            currentItem = item;
-            currentQty = 1;
-            document.getElementById('dImg').src = item.image || '';
+            curItem = item; curQty = 1;
+            document.getElementById('dImg').src = item.image;
             document.getElementById('dTitle').innerText = item.name;
-            document.getElementById('dNote').innerText = item.note || '';
             document.getElementById('dPrice').innerText = `$${item.price}`;
-            document.getElementById('dQty').innerText = currentQty;
+            document.getElementById('dQty').innerText = 1;
             
-            // 重置選項
-            document.getElementById('opt-egg').checked = false;
-            document.getElementById('opt-cheese').checked = false;
-            
-            updateSubtotal();
+            // 渲染選項
+            let optHtml = '';
+            if(item.opts) {
+                for(let key in item.opts) {
+                    if(item.opts[key]) {
+                        const p = (key==="深微醺") ? 40 : 0;
+                        optHtml += `<div class="opt-item" onclick="toggleOpt('${key}')">
+                            <span>${key} ${p>0?'+$'+p:''}</span>
+                            <input type="checkbox" id="cb-${key}" data-p="${p}">
+                        </div>`;
+                    }
+                }
+            }
+            document.getElementById('optContainer').innerHTML = optHtml;
+            updateTotal();
             document.getElementById('detailPage').style.display = 'block';
         }
 
-        function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
-
-        function toggleCheckbox(id) {
-            const cb = document.getElementById(id);
-            cb.checked = !cb.checked;
-            updateSubtotal();
+        function toggleOpt(id) { const cb = document.getElementById('cb-'+id); cb.checked = !cb.checked; updateTotal(); }
+        function changeQty(n) { curQty = Math.max(1, curQty + n); document.getElementById('dQty').innerText = curQty; updateTotal(); }
+        function updateTotal() {
+            let p = curItem.price;
+            document.querySelectorAll('#optContainer input:checked').forEach(cb => p += parseInt(cb.dataset.p || 0));
+            document.getElementById('dTotal').innerText = p * curQty;
         }
 
-        function changeQty(n) {
-            currentQty = Math.max(1, currentQty + n);
-            document.getElementById('dQty').innerText = currentQty;
-            updateSubtotal();
-        }
-
-        function updateSubtotal() {
-            let base = currentItem.price;
-            if(document.getElementById('opt-egg').checked) base += 15;
-            if(document.getElementById('opt-cheese').checked) base += 10;
-            document.getElementById('dSubtotal').innerText = base * currentQty;
-        }
-
-        function confirmAddToCart() {
-            let addons = [];
-            let addonPrice = 0;
-            if(document.getElementById('opt-egg').checked) { addons.push("加蛋"); addonPrice += 15; }
-            if(document.getElementById('opt-cheese').checked) { addons.push("加起司"); addonPrice += 10; }
-
-            const finalPrice = currentItem.price + addonPrice;
-            const finalName = currentItem.name + (addons.length > 0 ? `(${addons.join(',')})` : '');
-
-            for(let i=0; i<currentQty; i++) {
-                cart.push({ id: currentItem.id, name: finalName, price: finalPrice });
-            }
-            
-            document.getElementById('cartCount').innerText = cart.length;
-            closeDetail();
-            alert('已加入購物車！');
-        }
-
-        function submitOrder() {
-            if (cart.length === 0) return alert('請先點餐！');
-            const total = cart.reduce((sum, i) => sum + i.price, 0);
-            const orderData = {
-                table: tableNum,
-                items: cart,
-                totalPrice: total,
-                status: "待處理",
-                payStatus: "尚未結帳",
-                timestamp: Date.now()
-            };
-            db.ref('orders').push(orderData).then(() => {
-                alert('訂單已送出！');
-                cart = [];
-                document.getElementById('cartCount').innerText = 0;
+        function addToCart() {
+            let opts = [];
+            let p = curItem.price;
+            document.querySelectorAll('#optContainer input:checked').forEach(cb => {
+                const name = cb.id.replace('cb-','');
+                opts.push(name);
+                p += parseInt(cb.dataset.p);
             });
+            const name = curItem.name + (opts.length?`(${opts.join(',')})`:'');
+            for(let i=0; i<curQty; i++) cart.push({id: curItem.id, name: name, price: p});
+            alert('已加入！目前共 '+cart.length+' 份');
+            closeDetail();
         }
 
-        loadMenu();
+        function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
+        
+        // 點擊頂部標題送出訂單 (方便測試)
+        function submitOrder() {
+            if(!cart.length) return;
+            db.ref('orders').push({table:tableNum, items:cart, totalPrice: cart.reduce((s,i)=>s+i.price,0), status:"待處理", timestamp:Date.now()});
+            alert('訂單已送出'); cart = [];
+        }
+        document.querySelector('.header').onclick = submitOrder;
     </script>
 </body>
 </html>
