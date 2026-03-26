@@ -3,42 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 菜單內容管理</title>
+    <title>BlingOrder | 菜單完整管理版</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { color: #db2777; border-bottom: 2px solid #fbcfe8; padding-bottom: 10px; }
-        .form-group { display: grid; grid-template-columns: 1fr 1fr 80px 80px; gap: 10px; margin-bottom: 10px; background: #fff5f7; padding: 10px; border-radius: 8px; border: 1px solid #fce7f3; }
-        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .form-group { display: grid; grid-template-columns: 1.5fr 1fr 0.6fr 0.6fr 1fr 1fr 100px; gap: 10px; margin-bottom: 15px; background: #fff5f7; padding: 15px; border-radius: 8px; border: 1px solid #fce7f3; align-items: end; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; box-sizing: border-box; }
         .btn-add { background: #db2777; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
-        .btn-save { background: #059669; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-del { background: #dc2626; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        label { font-size: 12px; color: #666; display: block; margin-bottom: 2px; }
-        .header-label { font-weight: bold; color: #db2777; font-size: 14px; }
+        .btn-save { background: #059669; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; margin-bottom: 5px; }
+        .btn-del { background: #dc2626; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; width: 100%; }
+        label { font-size: 12px; color: #db2777; font-weight: bold; margin-bottom: 5px; display: block; }
+        .header-label { font-weight: bold; color: #db2777; font-size: 14px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>💎 菜單內容管理</h2>
+        <h2>💎 菜單完整管理 (含圖片與簡稱)</h2>
         <button class="btn-add" onclick="addNewItem()">＋ 新增品項</button>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr 80px 80px 100px; gap: 10px; padding: 0 10px 5px 10px;" class="header-label">
-            <div>品項完整名稱</div>
-            <div>後台簡稱(廚房看)</div>
-            <div>類別代碼</div>
-            <div>金額</div>
-            <div>操作</div>
-        </div>
-
         <div id="menuList"></div>
     </div>
 
     <script>
-        // 請更換為你的 Firebase 配置
         const firebaseConfig = {
-            databaseURL: "https://blingorder-default-rtdb.firebaseio.com/"
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -52,10 +43,12 @@
                     const id = child.key;
                     menuList.innerHTML += `
                         <div class="form-group">
-                            <input type="text" id="name-${id}" value="${item.name || ''}" placeholder="例:昭和朝霧．生乳捲">
-                            <input type="text" id="short-${id}" value="${item.short_name || ''}" placeholder="例:生乳捲">
-                            <input type="text" id="cat-${id}" value="${item.category || 'A'}" placeholder="A/B/C">
-                            <input type="number" id="price-${id}" value="${item.price || 0}">
+                            <div><label>品項完整名稱</label><input type="text" id="name-${id}" value="${item.name || ''}"></div>
+                            <div><label>後台簡稱</label><input type="text" id="short-${id}" value="${item.short_name || ''}"></div>
+                            <div><label>類別(A/B)</label><input type="text" id="cat-${id}" value="${item.category || 'A'}"></div>
+                            <div><label>金額</label><input type="number" id="price-${id}" value="${item.price || 0}"></div>
+                            <div><label>圖片路徑</label><input type="text" id="img-${id}" value="${item.image || ''}"></div>
+                            <div><label>備註/描述</label><input type="text" id="note-${id}" value="${item.note || ''}"></div>
                             <div>
                                 <button class="btn-save" onclick="saveItem('${id}')">儲存</button>
                                 <button class="btn-del" onclick="deleteItem('${id}')">刪除</button>
@@ -68,16 +61,19 @@
 
         function addNewItem() {
             const newRef = db.ref('menu').push();
-            newRef.set({ name: "新餐點", short_name: "簡稱", category: "A", price: 0 });
+            newRef.set({ name: "新餐點", short_name: "簡稱", category: "A", price: 0, image: "img/default.jpg", note: "" });
         }
 
         function saveItem(id) {
-            const name = document.getElementById(`name-${id}`).value;
-            const short_name = document.getElementById(`short-${id}`).value;
-            const category = document.getElementById(`cat-${id}`).value.toUpperCase();
-            const price = parseInt(document.getElementById(`price-${id}`).value);
-            db.ref('menu/' + id).update({ name, short_name, category, price })
-              .then(() => alert('儲存成功！'));
+            const updateData = {
+                name: document.getElementById(`name-${id}`).value,
+                short_name: document.getElementById(`short-${id}`).value,
+                category: document.getElementById(`cat-${id}`).value.toUpperCase(),
+                price: parseInt(document.getElementById(`price-${id}`).value),
+                image: document.getElementById(`img-${id}`).value,
+                note: document.getElementById(`note-${id}`).value
+            };
+            db.ref('menu/' + id).update(updateData).then(() => alert('儲存成功！'));
         }
 
         function deleteItem(id) {
