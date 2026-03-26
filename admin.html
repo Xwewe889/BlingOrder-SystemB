@@ -34,9 +34,7 @@
         const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let menuData = {}, lastCount = -1;
-
-        db.ref('menu').on('value', snap => { menuData = snap.val() || {}; });
+        let lastCount = -1;
 
         function speak(text) {
             const synth = window.speechSynthesis;
@@ -51,30 +49,20 @@
         }
 
         function loadOrders() {
+            // 監聽待處理訂單
             db.ref('orders').orderByChild('status').equalTo('待處理').on('value', snap => {
                 const currentCount = snap.numChildren();
-                if (lastCount !== -1 && currentCount > lastCount) { speak('您有新訂單'); }
+                
+                // 語音逻辑修正：只有當訂單數量變多（新訂單）時才播放，修改狀態不播放
+                if (lastCount !== -1 && currentCount > lastCount) { 
+                    speak('您有新訂單'); 
+                }
                 lastCount = currentCount;
 
                 const board = document.getElementById('orderBoard');
                 board.innerHTML = '';
-                const today = new Date().toLocaleDateString();
                 
-                // 強制數值化計算今日營收
-                db.ref('orders').once('value', allSnap => {
-                    let sTotal = 0;
-                    allSnap.forEach(os => {
-                        const o = os.val();
-                        const oDate = new Date(o.timestamp).toLocaleDateString();
-                        if(oDate === today) {
-                            // 關鍵：先確保轉為整數再相加
-                            const orderPrice = parseInt(o.totalPrice, 10) || 0;
-                            sTotal = sTotal + orderPrice;
-                        }
-                    });
-                    document.getElementById('dailySales').innerText = `今日：$ ${sTotal}`;
-                });
-
+                // 渲染待處理卡片
                 snap.forEach(orderSnap => {
                     const order = orderSnap.val();
                     const orderId = orderSnap.key;
@@ -116,6 +104,27 @@
                         </div>
                     `;
                 });
+                
+                // 每次訂單變動都同步更新今日營收
+                updateDailyRevenue();
+            });
+        }
+
+        function updateDailyRevenue() {
+            const today = new Date().toLocaleDateString();
+            db.ref('orders').once('value', allSnap => {
+                let sTotal = 0;
+                allSnap.forEach(os => {
+                    const o = os.val();
+                    const oDate = new Date(o.timestamp).toLocaleDateString();
+                    // 統計今日已出餐(已完成)且已結帳的金額，或者只要是今天的就計算（視 Eden 需求，這裡先採計今日全額）
+                    if(oDate === today) {
+                        // 強制轉整數運算，避免 "7575"
+                        const orderPrice = parseInt(o.totalPrice, 10) || 0;
+                        sTotal = sTotal + orderPrice;
+                    }
+                });
+                document.getElementById('dailySales').innerText = `今日：$ ${sTotal}`;
             });
         }
     </script>

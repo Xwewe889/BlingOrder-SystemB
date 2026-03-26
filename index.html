@@ -15,7 +15,7 @@
         .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
         .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
 
-        /* 九宮格強制佈局 */
+        /* 九宮格佈局 */
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
         .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
         .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: #eee; }
@@ -156,6 +156,7 @@
 
         function updateCartUI() {
             document.getElementById('cartCount').innerText = cart.length;
+            // 修正：確保總額計算使用 Number()
             const total = cart.reduce((s,i) => s + Number(i.price || 0), 0);
             document.getElementById('cartTotal').innerText = total;
             document.getElementById('cartItemsList').innerHTML = cart.map((i,idx) => `
@@ -170,6 +171,7 @@
         function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
 
         function submitOrder() {
+            // 修正：確保送出的總金額是數字格式
             const finalTotal = cart.reduce((s,i) => s + Number(i.price || 0), 0);
             db.ref('orders').push({table:tableNum, items:cart, totalPrice: finalTotal, status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
             .then(() => { alert('訂單已成功送出！'); cart = []; updateCartUI(); closeCart(); });
