@@ -2,55 +2,33 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 大螢幕接單看板(加購增強版)</title>
+    <title>BlingOrder | 接單看板 (無圖效能版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --soft-pink: #fbcfe8; }
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: var(--main-pink); margin: 0; padding: 20px; }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-bottom: 3px solid var(--soft-pink); margin-bottom: 25px; }
-        .daily-total { font-size: 28px; font-weight: bold; background: #333; color: #fff; padding: 10px 25px; border-radius: 50px; }
-
-        #orderBoard { display: grid; grid-template-columns: 1fr; gap: 20px; }
-
-        .order-card { background: white; border-radius: 15px; padding: 25px; display: flex; box-shadow: 0 5px 15px rgba(0,0,0,0.1); border: 2px solid #eee; }
-        
-        .table-area { min-width: 140px; text-align: center; border-right: 2px solid var(--soft-pink); margin-right: 25px; display: flex; flex-direction: column; justify-content: center; }
-        .table-no { font-size: 50px; font-weight: bold; color: var(--accent-pink); }
-        .order-time { font-size: 16px; color: #888; }
-
-        .content-area { flex-grow: 1; display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-start; }
-        
-        /* 餐點區塊 */
-        .item-block { background: #fff; border: 2px solid #fce7f3; border-radius: 12px; padding: 12px; width: calc(50% - 10px); box-sizing: border-box; display: flex; align-items: center; }
-        .kitchen-img { width: 140px; height: 140px; object-fit: cover; border-radius: 10px; margin-right: 15px; background: #eee; }
-        
-        .item-details { flex-grow: 1; }
-        .item-name { font-size: 24px; font-weight: bold; color: #333; line-height: 1.2; }
-        /* 備註加強顯示 */
-        .item-options { font-size: 20px; color: #db2777; font-weight: bold; margin-top: 5px; background: #fff0f5; display: inline-block; padding: 2px 8px; border-radius: 5px; }
-        .item-qty-row { font-size: 40px; font-weight: bold; color: #000; margin-top: 5px; }
-
-        .btn-area { min-width: 180px; display: flex; flex-direction: column; gap: 15px; justify-content: center; margin-left: 25px; }
-        button { font-size: 22px; padding: 18px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .btn-pay { background: #fbbf24; color: #000; }
-        .btn-pay.done { background: #d1d5db; color: #999; cursor: not-allowed; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #fdf2f8; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 15px; border-bottom: 3px solid #fbcfe8; margin-bottom: 20px; }
+        #orderBoard { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        .order-card { background: white; border-radius: 12px; padding: 20px; display: flex; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .table-area { min-width: 120px; text-align: center; border-right: 2px solid #fbcfe8; margin-right: 20px; }
+        .table-no { font-size: 45px; font-weight: bold; color: #db2777; }
+        .content-area { flex-grow: 1; display: flex; flex-wrap: wrap; gap: 10px; }
+        .item-row { background: #fff5f7; border: 1px solid #fce7f3; border-radius: 8px; padding: 12px; width: calc(33.3% - 10px); box-sizing: border-box; }
+        .item-name { font-size: 22px; font-weight: bold; }
+        .item-opt { color: #db2777; font-weight: bold; font-size: 18px; display: block; margin-top: 5px; }
+        .item-qty { font-size: 32px; font-weight: bold; margin-top: 5px; }
+        .btn-group { min-width: 150px; display: flex; flex-direction: column; gap: 10px; margin-left: 20px; }
+        button { font-size: 20px; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-pay { background: #fbbf24; }
+        .btn-pay.done { background: #eee; color: #999; }
         .btn-ship { background: #10b981; color: white; }
-
-        #curtain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(253,242,248,0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; }
-        .curtain-btn { padding: 40px 80px; font-size: 36px; background: var(--accent-pink); color: white; border-radius: 20px; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="curtain"><button class="curtain-btn" onclick="startSystem()">💎 啟動接單看板</button></div>
-    
     <div class="header">
-        <h1 style="margin:0; color: var(--accent-pink); font-size: 28px;">BlingOrder 接單看板 (加購顯示版)</h1>
-        <div id="dailyTotalSales" class="daily-total">今日：$0</div>
+        <h1 style="color:#db2777">BlingOrder 接單看板 (無圖片版)</h1>
+        <div id="dailySales" style="font-size: 24px; font-weight: bold; background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;">今日：$0</div>
     </div>
-
     <div id="orderBoard"></div>
 
     <script>
@@ -61,91 +39,63 @@
 
         db.ref('menu').on('value', snap => { menuData = snap.val() || {}; });
 
-        function startSystem() {
-            document.getElementById('curtain').style.display = 'none';
-            loadOrders();
-        }
+        db.ref('orders').orderByChild('status').equalTo('待處理').on('value', (snap) => {
+            const board = document.getElementById('orderBoard');
+            board.innerHTML = '';
+            let total = 0;
+            const today = new Date().toLocaleDateString();
 
-        function loadOrders() {
-            db.ref('orders').orderByChild('status').equalTo('待處理').on('value', (snapshot) => {
-                const board = document.getElementById('orderBoard');
-                board.innerHTML = '';
-                
-                // 計算今日營收
-                db.ref('orders').once('value', allSnap => {
-                    let calcTotal = 0;
-                    const today = new Date().toLocaleDateString();
-                    allSnap.forEach(os => {
-                        const o = os.val();
-                        if(new Date(o.timestamp).toLocaleDateString() === today) calcTotal += o.totalPrice;
-                    });
-                    document.getElementById('dailyTotalSales').innerText = `今日：$${calcTotal}`;
-                });
-
-                snapshot.forEach((orderSnap) => {
-                    const order = orderSnap.val();
-                    const orderId = orderSnap.key;
-                    const orderTime = new Date(order.timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-                    
-                    // 1. 處理合併 logic (包含選項也要一樣才合併)
-                    let itemsMap = {};
-                    if(order.items) {
-                        order.items.forEach(item => {
-                            // 使用完整的名稱(含括號)作為 Key，這樣不同選項才不會被誤併
-                            const fullKey = item.name; 
-                            const menuItem = menuData[item.id] || {};
-                            const img = menuItem.image || 'img/default.jpg';
-                            const category = menuItem.category || 'Z';
-
-                            if (!itemsMap[fullKey]) {
-                                itemsMap[fullKey] = { 
-                                    nameOnly: item.name.split('(')[0], 
-                                    option: item.name.includes('(') ? '(' + item.name.split('(')[1] : '',
-                                    qty: 0, 
-                                    img: img, 
-                                    cat: category 
-                                };
-                            }
-                            itemsMap[fullKey].qty++;
-                        });
-                    }
-
-                    const sortedItems = Object.values(itemsMap).sort((a, b) => a.cat.localeCompare(b.cat));
-
-                    let itemsHtml = sortedItems.map(i => `
-                        <div class="item-block">
-                            <img src="${i.img}" class="kitchen-img" onerror="this.src='https://placehold.co/150x150?text=No+Img'">
-                            <div class="item-details">
-                                <div class="item-name">${i.nameOnly}</div>
-                                ${i.option ? `<div class="item-options">${i.option}</div>` : ''}
-                                <div class="item-qty-row">× ${i.qty}</div>
-                            </div>
-                        </div>
-                    `).join('');
-
-                    board.innerHTML += `
-                        <div class="order-card">
-                            <div class="table-area">
-                                <div class="table-no">${order.table === "7" ? "💎包廂" : order.table + "桌"}</div>
-                                <div class="order-time">${orderTime}</div>
-                                <div style="font-size:22px; margin-top:10px;">$${order.totalPrice}</div>
-                            </div>
-                            <div class="content-area">${itemsHtml}</div>
-                            <div class="btn-area">
-                                <button class="btn-pay ${order.payStatus === '已結帳' ? 'done' : ''}" 
-                                        onclick="markPaid('${orderId}')" ${order.payStatus === '已結帳' ? 'disabled' : ''}>
-                                    ${order.payStatus === '已結帳' ? '已結帳' : '結帳'}
-                                </button>
-                                <button class="btn-ship" onclick="markShipped('${orderId}')">出餐</button>
-                            </div>
-                        </div>
-                    `;
-                });
+            // 統計營收
+            db.ref('orders').once('value', allSnap => {
+                let sTotal = 0;
+                allSnap.forEach(os => { if(new Date(os.val().timestamp).toLocaleDateString() === today) sTotal += os.val().totalPrice; });
+                document.getElementById('dailySales').innerText = `今日：$${sTotal}`;
             });
-        }
 
-        function markPaid(id) { db.ref('orders/' + id).update({ payStatus: '已結帳' }); }
-        function markShipped(id) { db.ref('orders/' + id).update({ status: '已完成' }); }
+            snap.forEach((orderSnap) => {
+                const order = orderSnap.val();
+                const orderId = orderSnap.key;
+                let itemsMap = {};
+                
+                order.items.forEach(item => {
+                    const key = item.name;
+                    if(!itemsMap[key]) {
+                        itemsMap[key] = { 
+                            name: item.name.split('(')[0], 
+                            opt: item.name.includes('(') ? '('+item.name.split('(')[1] : '',
+                            qty: 0,
+                            cat: menuData[item.id]?.category || 'Z'
+                        };
+                    }
+                    itemsMap[key].qty++;
+                });
+
+                const sortedItems = Object.values(itemsMap).sort((a,b) => a.cat.localeCompare(b.cat));
+                let itemsHtml = sortedItems.map(i => `
+                    <div class="item-row">
+                        <span class="item-name">${i.name}</span>
+                        ${i.opt ? `<span class="item-opt">${i.opt}</span>` : ''}
+                        <div class="item-qty">× ${i.qty}</div>
+                    </div>
+                `).join('');
+
+                board.innerHTML += `
+                    <div class="order-card">
+                        <div class="table-area">
+                            <div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div>
+                            <div style="font-size:18px;margin-top:10px;">$${order.totalPrice}</div>
+                        </div>
+                        <div class="content-area">${itemsHtml}</div>
+                        <div class="btn-group">
+                            <button class="btn-pay ${order.payStatus==='已結帳'?'done':''}" onclick="db.ref('orders/${orderId}').update({payStatus:'已結帳'})">
+                                ${order.payStatus==='已結帳'?'已結帳':'結帳'}
+                            </button>
+                            <button class="btn-ship" onclick="db.ref('orders/${orderId}').update({status:'已完成'})">出餐</button>
+                        </div>
+                    </div>
+                `;
+            });
+        });
     </script>
 </body>
 </html>
