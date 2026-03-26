@@ -13,17 +13,17 @@
         /* 頂部導覽 */
         .top-fixed { position: sticky; top: 0; z-index: 1000; background: white; border-bottom: 1px solid #eee; }
         .header { padding: 10px; text-align: center; }
-        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; border-top: 1px solid #f9f9f9; }
+        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; border-top: 1px solid #f9f9f9; scrollbar-width: none; }
+        .category-bar::-webkit-scrollbar { display: none; }
         .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
         .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
 
-        /* 九宮格 (精確鎖定一列兩個) */
-        .menu-grid { display: block; padding: 12px; }
-        .grid-box { display: flex; flex-wrap: wrap; gap: 12px; }
-        .grid-item { width: calc(50% - 6px); background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; margin-bottom: 5px; }
+        /* 九宮格佈局 */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
         .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: #eee; }
         .grid-info { padding: 10px; text-align: center; }
-        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; overflow: hidden; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; line-height: 1.3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         .grid-info .price { color: var(--price-orange); font-weight: bold; margin-top: 5px; font-size: 16px; }
 
         /* 詳情頁彈窗 */
@@ -34,13 +34,13 @@
         .opt-item { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
         .opt-item input { width: 22px; height: 22px; accent-color: var(--price-orange); }
 
-        /* 置底結帳條 */
+        /* 底部固定結帳條 */
         .cart-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 1500; }
         .btn-checkout { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; }
 
         /* 購物車 Modal */
         #cartModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; }
-        .cart-content { background: white; width: 90%; margin: 15% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
+        .cart-content { background: white; width: 90%; margin: 20% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -48,32 +48,30 @@
     <div class="top-fixed">
         <div class="header">
             <h3 style="margin:0; color: var(--accent-pink); font-size: 20px;">💎 BlingOrder</h3>
-            <div id="displayTable" style="font-size: 14px; color: #888;">載入中...</div>
+            <div id="displayTable" style="font-size: 14px; color: #888;"></div>
         </div>
         <div id="catBar" class="category-bar"></div>
     </div>
 
-    <div id="menuGrid" class="menu-grid">
-        <div id="itemContainer" class="grid-box"></div>
-    </div>
+    <div id="menuGrid" class="menu-grid"></div>
 
     <div class="cart-bar">
-        <div style="font-size: 17px; font-weight: bold;">🛒 已點 <span id="cartCount">0</span> 份</div>
+        <div style="font-size: 18px; font-weight: bold;">🛒 已點 <span id="cartCount">0</span> 份</div>
         <button class="btn-checkout" onclick="openCart()">結帳 $ <span id="cartTotal">0</span></button>
     </div>
 
     <div id="detailPage">
         <div class="close-btn" onclick="closeDetail()">✕</div>
-        <img id="dImg" class="detail-img" src="">
+        <img id="dImg" class="detail-img">
         <div class="detail-body">
-            <h2 id="dTitle" style="margin:0"></h2>
+            <h2 id="dTitle" style="margin:0; font-size: 22px;"></h2>
             <div id="dPrice" style="color:var(--price-orange); font-size:24px; font-weight:bold; margin:10px 0;"></div>
             <div id="optContainer"></div>
         </div>
-        <div style="position: sticky; bottom: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; align-items: center;">
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(-1)">-</button>
-            <span id="dQty" style="font-size: 22px; font-weight: bold; margin: 0 15px;">1</span>
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(1)">+</button>
+        <div style="position: sticky; bottom: 0; background: white; padding: 15px 20px; border-top: 1px solid #eee; display: flex; align-items: center; box-sizing: border-box;">
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(-1)">-</button>
+            <span id="dQty" style="font-size: 20px; font-weight: bold; margin: 0 15px;">1</span>
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(1)">+</button>
             <button style="flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-left: 15px;" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
         </div>
     </div>
@@ -97,7 +95,6 @@
 
         let allMenu = [], currentCat = "全部", cart = [], curItem = null, curQty = 1;
 
-        // 讀取菜單
         db.ref('menu').on('value', snap => {
             allMenu = [];
             snap.forEach(c => allMenu.push({...c.val(), id: c.key}));
@@ -115,8 +112,8 @@
         function filterCat(c) { currentCat = c; renderCats(); renderGrid(); }
 
         function renderGrid() {
-            const container = document.getElementById('itemContainer');
-            container.innerHTML = '';
+            const grid = document.getElementById('menuGrid');
+            grid.innerHTML = '';
             const filtered = (currentCat === "全部") ? allMenu : allMenu.filter(i => i.category === currentCat);
             
             filtered.forEach(item => {
@@ -130,7 +127,7 @@
                         <div class="price">$${item.price}</div>
                     </div>
                 `;
-                container.appendChild(div);
+                grid.appendChild(div);
             });
         }
 
