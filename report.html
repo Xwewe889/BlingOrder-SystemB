@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 營收報表明細 (最終兼容修正版)</title>
+    <title>BlingOrder | 報表最終修復版</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -19,7 +19,7 @@
 <body>
     <div class="header-box">
         <a href="admin.html" style="text-decoration: none; color: #666;">⬅ 返回接單後台</a>
-        <h2 style="margin: 15px 0;">📊 營收報表明細 (全數據兼容版)</h2>
+        <h2 style="margin: 15px 0;">📊 報表數據終極修復</h2>
         <div id="statsArea">
             <div class="stat-card">今日營收：<span id="dayTotal" class="stat-val">$ 0</span></div>
             <div class="stat-card">單數：<span id="orderCount" class="stat-val">0</span></div>
@@ -27,15 +27,7 @@
     </div>
 
     <table>
-        <thead>
-            <tr>
-                <th>日期時間</th>
-                <th>桌號</th>
-                <th>金額</th>
-                <th>品項清單</th>
-                <th>管理</th>
-            </tr>
-        </thead>
+        <thead><tr><th>時間</th><th>桌號</th><th>金額</th><th>品項</th><th>管理</th></tr></thead>
         <tbody id="reportTable"></tbody>
     </table>
 
@@ -43,6 +35,17 @@
         const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+
+        let menuPrices = {}; // 用來存菜單價格對照表
+
+        // 1. 先讀取菜單價格，以防訂單資料損壞
+        db.ref('menu').once('value', menuSnap => {
+            menuSnap.forEach(item => {
+                const data = item.val();
+                menuPrices[data.name] = Number(data.price || 0);
+            });
+            loadReport(); // 菜單讀完再讀報表
+        });
 
         function loadReport() {
             const today = new Date().toLocaleDateString();
@@ -56,55 +59,43 @@
                 orders.reverse();
 
                 orders.forEach(order => {
-                    const oDate = new Date(order.timestamp).toLocaleDateString();
-                    const oTime = new Date(order.timestamp).toLocaleString();
+                    const oDate = new Date(order.timestamp || parseInt(order.key)).toLocaleDateString();
                     
-                    // --- 核心修復邏輯 ---
-                    let correctedAmt = 0;
+                    // --- 超級兼容修復邏輯 ---
+                    let finalAmt = 0;
                     
-                    // 1. 優先嘗試加總 items 裡的 price
                     if (order.items && Array.isArray(order.items)) {
-                        let itemsTotal = 0;
-                        let hasItemPrice = false;
                         order.items.forEach(item => {
-                            if (item.price !== undefined) {
-                                itemsTotal += Number(item.price);
-                                hasItemPrice = true;
+                            if (typeof item === 'object' && item.price) {
+                                finalAmt += Number(item.price);
+                            } else {
+                                // 如果 items 是純文字 (如 "藍寶石漂浮飲")，去對照菜單價格
+                                const nameOnly = String(item).split('(')[0].trim();
+                                finalAmt += (menuPrices[nameOnly] || 0);
                             }
                         });
-                        
-                        if (hasItemPrice) {
-                            correctedAmt = itemsTotal;
-                        } else {
-                            // 2. 如果 items 沒價格，抓 totalPrice，但要防範 150150 文字拼接
-                            let rawPrice = String(order.totalPrice || 0);
-                            if (rawPrice.length > 5 && rawPrice.includes(rawPrice.substring(0, rawPrice.length/2))) {
-                                // 像是 "150150" 這種重複的，取一半
-                                correctedAmt = Number(rawPrice.substring(0, rawPrice.length/2));
-                            } else {
-                                correctedAmt = Number(rawPrice);
-                            }
-                        }
-                    } else {
-                        correctedAmt = Number(order.totalPrice || 0);
-                    }
-                    
-                    if(oDate === today) {
-                        total += correctedAmt;
-                        count++;
                     }
 
-                    let itemNames = (order.items || []).map(i => {
-                        if (typeof i === 'object') return i.name || "未知";
-                        return String(i);
-                    }).join('、');
+                    // 如果算出來還是 0，嘗試抓舊欄位 total 或 totalPrice，並過濾 150150 病毒
+                    if (finalAmt === 0) {
+                        let raw = String(order.totalPrice || order.total || 0);
+                        if (raw.length > 4 && raw.substring(0, raw.length/2) === raw.substring(raw.length/2)) {
+                            finalAmt = Number(raw.substring(0, raw.length/2));
+                        } else {
+                            finalAmt = Number(raw);
+                        }
+                    }
+                    
+                    if(oDate === today) { total += finalAmt; count++; }
+
+                    let itemNames = (order.items || []).map(i => (typeof i === 'object' ? i.name : i)).join('、');
 
                     html += `
                         <tr>
-                            <td>${oTime}</td>
-                            <td>${order.table==="7"?"💎 包廂":order.table+" 桌"}</td>
-                            <td style="font-weight:bold; color:#db2777;">$ ${correctedAmt}</td>
-                            <td style="font-size: 0.9em;">${itemNames}</td>
+                            <td>${new Date(order.timestamp || parseInt(order.key)).toLocaleString()}</td>
+                            <td>${order.table==="7"?"💎包廂":order.table}</td>
+                            <td style="font-weight:bold; color:#db2777;">$ ${finalAmt}</td>
+                            <td style="font-size: 0.8em;">${itemNames}</td>
                             <td><button class="btn-del" onclick="deleteOrder('${order.key}')">刪除</button></td>
                         </tr>
                     `;
@@ -116,13 +107,7 @@
             });
         }
 
-        function deleteOrder(key) {
-            if(confirm('確定要刪除這筆訂單嗎？')) {
-                db.ref(`orders/${key}`).remove();
-            }
-        }
-
-        loadReport();
+        function deleteOrder(key) { if(confirm('確定刪除？')) db.ref(`orders/${key}`).remove(); }
     </script>
 </body>
 </html>
