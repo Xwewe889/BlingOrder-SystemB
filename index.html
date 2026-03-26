@@ -8,50 +8,46 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --price-orange: #ff5722; }
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 110px; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 120px; }
         
-        /* 1. 頂部導覽列 (固定) */
-        .top-nav { position: sticky; top: 0; z-index: 1000; background: white; }
-        .header { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
-        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; scrollbar-width: none; }
+        /* 1. 頂部固定區 (標題 + 分類) */
+        .top-fixed { position: sticky; top: 0; z-index: 1000; background: white; border-bottom: 1px solid #eee; }
+        .header { padding: 15px; text-align: center; }
+        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; border-top: 1px solid #f9f9f9; }
         .category-bar::-webkit-scrollbar { display: none; }
         .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
         .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
 
-        /* 2. 九宮格內容區 */
+        /* 2. 九宮格內容區 (恢復 Grid 佈局) */
         .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
-        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; height: fit-content; }
+        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
         .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #eee; display: block; }
         .grid-info { padding: 10px; text-align: center; }
-        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; line-height: 1.3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; line-height: 1.3; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .grid-info .price { color: var(--price-orange); font-weight: bold; margin-top: 5px; font-size: 16px; }
 
-        /* 3. 詳情彈窗 */
+        /* 3. 詳情彈窗 (圖2) */
         #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; overflow-y: auto; }
-        .close-btn { position: absolute; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 2100; font-size: 20px; }
+        .close-btn { position: absolute; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; font-size: 20px; z-index: 2100; }
         .detail-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
         .detail-body { padding: 20px; }
         .opt-item { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
         .opt-item input { width: 22px; height: 22px; accent-color: var(--price-orange); }
 
-        /* 4. 詳情頁底部控制器 */
-        .detail-footer { position: fixed; bottom: 0; width: 100%; background: white; padding: 15px 20px; display: flex; align-items: center; border-top: 1px solid #eee; box-sizing: border-box; }
-        .add-cart-confirm { flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-left: 15px; }
+        /* 4. 底部固定結帳條 */
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 2px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 1500; }
+        .btn-checkout { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; }
 
-        /* 5. 永久置底結帳條 */
-        .cart-fixed-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 1500; }
-        .checkout-trigger { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; }
-
-        /* 6. 購物車清單彈窗 */
+        /* 購物車 Modal */
         #cartModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; }
-        .cart-modal-content { background: white; width: 90%; margin: 20% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
+        .cart-content { background: white; width: 90%; margin: 20% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <div class="top-nav">
+    <div class="top-fixed">
         <div class="header">
-            <h3 style="margin:0; color: var(--accent-pink); font-size: 20px;">💎 BlingOrder</h3>
+            <h3 style="margin:0; color: var(--accent-pink);">💎 BlingOrder</h3>
             <div id="displayTable" style="font-size: 14px; color: #888;"></div>
         </div>
         <div id="catBar" class="category-bar"></div>
@@ -59,30 +55,30 @@
 
     <div id="menuGrid" class="menu-grid"></div>
 
-    <div class="cart-fixed-bar">
-        <div style="font-size: 18px; font-weight: bold; color: #333;">🛒 已點 <span id="cartCount">0</span> 份</div>
-        <button class="checkout-trigger" onclick="openCart()">結帳 $ <span id="cartTotal">0</span></button>
+    <div class="cart-bar">
+        <div style="font-size: 18px; font-weight: bold;">🛒 已點 <span id="cartCount">0</span> 份</div>
+        <button class="btn-checkout" onclick="openCart()">結帳 $ <span id="cartTotal">0</span></button>
     </div>
 
     <div id="detailPage">
         <div class="close-btn" onclick="closeDetail()">✕</div>
         <img id="dImg" class="detail-img">
         <div class="detail-body">
-            <h2 id="dTitle" style="margin:0; font-size: 22px;"></h2>
+            <h2 id="dTitle" style="margin:0"></h2>
             <div id="dPrice" style="color:var(--price-orange); font-size:24px; font-weight:bold; margin:10px 0;"></div>
             <div id="optContainer"></div>
         </div>
-        <div class="detail-footer">
+        <div style="position: sticky; bottom:0; background:white; padding:15px; border-top:1px solid #eee; display:flex; align-items:center;">
             <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(-1)">-</button>
             <span id="dQty" style="font-size: 20px; font-weight: bold; margin: 0 15px;">1</span>
             <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(1)">+</button>
-            <button class="add-cart-confirm" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
+            <button style="flex-grow:1; background:var(--price-orange); color:white; border:none; padding:15px; border-radius:30px; margin-left:15px; font-weight:bold;" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
         </div>
     </div>
 
     <div id="cartModal" onclick="closeCart()">
-        <div class="cart-modal-content" onclick="event.stopPropagation()">
-            <h3 style="margin-top:0; color:var(--accent-pink);">📋 點餐清單確認</h3>
+        <div class="cart-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; color:var(--accent-pink);">📋 點餐清單</h3>
             <div id="cartItemsList" style="max-height: 40vh; overflow-y: auto;"></div>
             <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
             <button onclick="submitOrder()" style="width:100%; background:var(--accent-pink); color:white; border:none; padding:15px; border-radius:10px; font-size:18px; font-weight:bold;">確認送出訂單</button>
@@ -99,6 +95,7 @@
 
         let allMenu = [], currentCat = "全部", cart = [], curItem = null, curQty = 1;
 
+        // 讀取菜單
         db.ref('menu').on('value', snap => {
             allMenu = [];
             snap.forEach(c => allMenu.push({...c.val(), id: c.key}));
@@ -118,20 +115,20 @@
         function renderGrid() {
             const grid = document.getElementById('menuGrid');
             grid.innerHTML = '';
-            const filtered = currentCat === "全部" ? allMenu : allMenu.filter(i => i.category === currentCat);
+            const filtered = (currentCat === "全部") ? allMenu : allMenu.filter(i => i.category === currentCat);
             
             filtered.forEach(item => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'grid-item';
-                itemDiv.onclick = () => openDetail(item);
-                itemDiv.innerHTML = `
+                const div = document.createElement('div');
+                div.className = 'grid-item';
+                div.onclick = () => openDetail(item);
+                div.innerHTML = `
                     <img src="${item.image || ''}" class="grid-img">
                     <div class="grid-info">
                         <h3>${item.name}</h3>
                         <div class="price">$${item.price}</div>
                     </div>
                 `;
-                grid.appendChild(itemDiv);
+                grid.appendChild(div);
             });
         }
 
@@ -146,17 +143,17 @@
             edenOpts.forEach(key => {
                 if(item.opts && item.opts[key]) {
                     const p = (key==="深微醺") ? 40 : 0;
-                    optHtml += `<div class="opt-item" onclick="toggleOpt('${key}')"><span>${key} ${p>0?'+$'+p:''}</span><input type="checkbox" id="cb-${key}" data-p="${p}" onclick="event.stopPropagation(); updateDetailSub();"></div>`;
+                    optHtml += `<div class="opt-item" onclick="toggleOpt('${key}')"><span>${key} ${p>0?'+$'+p:''}</span><input type="checkbox" id="cb-${key}" data-p="${p}" onclick="event.stopPropagation(); updateSub();"></div>`;
                 }
             });
             document.getElementById('optContainer').innerHTML = optHtml;
-            updateDetailSub();
+            updateSub();
             document.getElementById('detailPage').style.display = 'block';
         }
 
-        function toggleOpt(k) { const cb = document.getElementById('cb-'+k); if(cb) { cb.checked = !cb.checked; updateDetailSub(); } }
-        function changeQty(n) { curQty = Math.max(1, curQty + n); document.getElementById('dQty').innerText = curQty; updateDetailSub(); }
-        function updateDetailSub() {
+        function toggleOpt(k) { const cb = document.getElementById('cb-'+k); if(cb) { cb.checked = !cb.checked; updateSub(); } }
+        function changeQty(n) { curQty = Math.max(1, curQty + n); document.getElementById('dQty').innerText = curQty; updateSub(); }
+        function updateSub() {
             let p = curItem.price;
             document.querySelectorAll('#optContainer input:checked').forEach(cb => p += parseInt(cb.dataset.p || 0));
             document.getElementById('dSub').innerText = p * curQty;
@@ -179,7 +176,7 @@
             document.getElementById('cartItemsList').innerHTML = cart.map((i,idx) => `
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee;">
                     <span>${i.name}</span>
-                    <span>$${i.price} <button onclick="cart.splice(${idx},1);updateCartUI();" style="color:red;border:none;background:none;font-weight:bold;margin-left:10px;">✕</button></span>
+                    <span>$${i.price} <button onclick="cart.splice(${idx},1);updateCartUI();" style="color:red;border:none;background:none;">✕</button></span>
                 </div>
             `).join('');
         }
@@ -189,9 +186,8 @@
         function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
 
         function submitOrder() {
-            const total = cart.reduce((s,i) => s + i.price, 0);
-            db.ref('orders').push({table:tableNum, items:cart, totalPrice: total, status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
-              .then(() => { alert('訂單已送出，謝謝 Eden！'); cart = []; updateCartUI(); closeCart(); });
+            db.ref('orders').push({table:tableNum, items:cart, totalPrice: cart.reduce((s,i)=>s+i.price,0), status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
+            .then(() => { alert('訂單已送出，謝謝 Eden！'); cart = []; updateCartUI(); closeCart(); });
         }
     </script>
 </body>
