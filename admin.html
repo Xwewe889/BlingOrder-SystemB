@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 接單看板 (數字精確版)</title>
+    <title>BlingOrder | 接單看板 (數據修復版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -52,22 +52,27 @@
             // 監聽待處理訂單
             db.ref('orders').orderByChild('status').equalTo('待處理').on('value', snap => {
                 const currentCount = snap.numChildren();
-                
-                // 語音逻辑修正：只有當訂單數量變多（新訂單）時才播放，修改狀態不播放
-                if (lastCount !== -1 && currentCount > lastCount) { 
-                    speak('您有新訂單'); 
-                }
+                if (lastCount !== -1 && currentCount > lastCount) { speak('您有新訂單'); }
                 lastCount = currentCount;
 
                 const board = document.getElementById('orderBoard');
                 board.innerHTML = '';
                 
-                // 渲染待處理卡片
                 snap.forEach(orderSnap => {
                     const order = orderSnap.val();
                     const orderId = orderSnap.key;
-                    let itemsMap = {};
                     
+                    // 金額修復邏輯：不直接信任 totalPrice，而是重新計算 items
+                    let correctedPrice = 0;
+                    if (order.items) {
+                        order.items.forEach(item => {
+                            correctedPrice += Number(item.price || 0);
+                        });
+                    } else {
+                        correctedPrice = Number(order.totalPrice || 0);
+                    }
+
+                    let itemsMap = {};
                     if(order.items) {
                         order.items.forEach(item => {
                             const key = item.name;
@@ -90,7 +95,7 @@
                         <div class="order-card">
                             <div class="table-area">
                                 <div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div>
-                                <div style="font-size:20px;font-weight:bold;margin-top:10px;">$ ${parseInt(order.totalPrice, 10) || 0}</div>
+                                <div style="font-size:20px;font-weight:bold;margin-top:10px;">$ ${correctedPrice}</div>
                             </div>
                             <div class="content-area">${itemsHtml}</div>
                             <div class="btn-group">
@@ -104,8 +109,6 @@
                         </div>
                     `;
                 });
-                
-                // 每次訂單變動都同步更新今日營收
                 updateDailyRevenue();
             });
         }
@@ -117,14 +120,18 @@
                 allSnap.forEach(os => {
                     const o = os.val();
                     const oDate = new Date(o.timestamp).toLocaleDateString();
-                    // 統計今日已出餐(已完成)且已結帳的金額，或者只要是今天的就計算（視 Eden 需求，這裡先採計今日全額）
                     if(oDate === today) {
-                        // 強制轉整數運算，避免 "7575"
-                        const orderPrice = parseInt(o.totalPrice, 10) || 0;
-                        sTotal = sTotal + orderPrice;
+                        // 營收統計同步採用修復邏輯：重新加總 items 以防字串病毒
+                        let orderPrice = 0;
+                        if (o.items) {
+                            o.items.forEach(item => { orderPrice += Number(item.price || 0); });
+                        } else {
+                            orderPrice = Number(o.totalPrice || 0);
+                        }
+                        sTotal += orderPrice;
                     }
                 });
-                document.getElementById('dailySales').innerText = `今日：$ ${sTotal}`;
+                document.getElementById('dailySales').innerText = `今日：$ ${sTotal.toLocaleString()}`;
             });
         }
     </script>
