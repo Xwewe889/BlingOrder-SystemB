@@ -8,49 +8,42 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --price-orange: #ff5722; }
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 120px; }
-        
-        .header { background: white; padding: 10px; text-align: center; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
-        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; background: white; border-bottom: 1px solid #eee; position: sticky; top: 50px; z-index: 90; }
-        .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 120px; -webkit-tap-highlight-color: transparent; }
+        .top-fixed { position: sticky; top: 0; z-index: 1000; background: white; border-bottom: 1px solid #eee; }
+        .header { padding: 12px; text-align: center; }
+        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; border-top: 1px solid #f9f9f9; }
+        .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
         .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
-
-        /* 九宮格佈局強制鎖定 */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; box-sizing: border-box; }
-        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
+        .menu-grid { display: flex !important; flex-wrap: wrap !important; padding: 10px !important; gap: 10px !important; }
+        .grid-item { width: calc(50% - 5px); background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; box-sizing: border-box; margin-bottom: 5px; }
         .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: #eee; }
         .grid-info { padding: 10px; text-align: center; }
-        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; line-height: 1.2; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-
-        /* 詳情頁彈窗 */
-        #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 300; overflow-y: auto; }
-        .close-btn { position: absolute; top: 15px; left: 15px; width: 35px; height: 35px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 310; font-size: 20px; }
+        .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1.2; overflow: hidden; }
+        .grid-info .price { color: var(--price-orange); font-weight: bold; margin-top: 5px; font-size: 16px; }
+        #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; overflow-y: auto; }
+        .close-btn { position: absolute; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 2100; font-size: 20px; }
         .detail-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
         .detail-body { padding: 20px; }
-        .opt-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
-
-        /* 結帳條固定 */
-        .cart-fixed-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 200; }
+        .opt-item { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
+        .opt-item input { width: 22px; height: 22px; accent-color: var(--price-orange); }
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 1500; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
         .btn-checkout { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; }
-
-        /* 購物車 Modal */
-        #cartModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 400; }
-        .cart-modal-content { background: white; width: 90%; margin: 20% auto; border-radius: 15px; padding: 20px; }
+        .cart-content { background: white; width: 90%; margin: 15% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h3 style="margin:0; color: var(--accent-pink);">💎 BlingOrder</h3>
-        <div id="displayTable" style="font-size: 14px; color: #888;"></div>
+    <div class="top-fixed">
+        <div class="header">
+            <h3 style="margin:0; color: var(--accent-pink); font-size: 20px;">💎 BlingOrder</h3>
+            <div id="displayTable" style="font-size: 14px; color: #888;"></div>
+        </div>
+        <div id="catBar" class="category-bar"></div>
     </div>
-    <div id="catBar" class="category-bar"></div>
     <div id="menuGrid" class="menu-grid"></div>
-
-    <div class="cart-fixed-bar">
-        <div style="font-size: 18px; font-weight: bold;">🛒 已選 <span id="cartCount">0</span> 份</div>
+    <div class="cart-bar">
+        <div style="font-size: 17px; font-weight: bold;">🛒 已選 <span id="cartCount">0</span> 份</div>
         <button class="btn-checkout" onclick="openCart()">結帳 $ <span id="cartTotal">0</span></button>
     </div>
-
     <div id="detailPage">
         <div class="close-btn" onclick="closeDetail()">✕</div>
         <img id="dImg" class="detail-img">
@@ -60,120 +53,110 @@
             <div id="optContainer"></div>
         </div>
         <div style="position: sticky; bottom: 0; background: white; padding: 15px; border-top: 1px solid #eee; display: flex; align-items: center;">
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;" onclick="changeQty(-1)">-</button>
-            <span id="dQty" style="font-size: 20px; font-weight: bold; margin: 0 15px;">1</span>
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;" onclick="changeQty(1)">+</button>
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(-1)">-</button>
+            <span id="dQty" style="font-size: 22px; font-weight: bold; margin: 0 15px;">1</span>
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(1)">+</button>
             <button style="flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-left: 15px;" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
         </div>
     </div>
-
     <div id="cartModal" onclick="closeCart()">
-        <div class="cart-modal-content" onclick="event.stopPropagation()">
-            <h3 style="margin-top:0">確認點餐清單</h3>
+        <div class="cart-content" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; color:var(--accent-pink);">📋 點餐清單</h3>
             <div id="cartItemsList" style="max-height: 40vh; overflow-y: auto;"></div>
-            <hr>
-            <button onclick="submitOrder()" style="width:100%; background:var(--accent-pink); color:white; border:none; padding:15px; border-radius:10px; font-size:18px; font-weight:bold; margin-top:10px;">確認送出訂單</button>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+            <button onclick="submitOrder()" style="width:100%; background:var(--accent-pink); color:white; border:none; padding:15px; border-radius:10px; font-size:18px; font-weight:bold;">確認送出訂單</button>
+            <button onclick="closeCart()" style="width:100%; background:#f0f0f0; border:none; padding:10px; border-radius:10px; margin-top:10px;">回菜單</button>
         </div>
     </div>
-
     <script>
         const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const tableNum = new URLSearchParams(window.location.search).get('table') || "未知";
         document.getElementById('displayTable').innerText = (tableNum==="7"?"💎包廂":tableNum+"號桌");
-
         let allMenu = [], currentCat = "全部", cart = [], curItem = null, curQty = 1;
-
         db.ref('menu').on('value', snap => {
             allMenu = [];
-            snap.forEach(c => allMenu.push({...c.val(), id: c.key}));
-            renderCats();
-            renderGrid();
+            snap.forEach(c => { const itemData = c.val(); allMenu.push({...itemData, id: c.key}); });
+            renderCats(); renderGrid();
         });
-
         function renderCats() {
             const cats = ["全部", ...new Set(allMenu.map(i => i.category))];
-            document.getElementById('catBar').innerHTML = cats.map(c => 
-                `<button class="cat-btn ${currentCat===c?'active':''}" onclick="currentCat='${c}';renderCats();renderGrid();">${c}</button>`
-            ).join('');
+            const catBar = document.getElementById('catBar');
+            catBar.innerHTML = '';
+            cats.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = 'cat-btn' + (currentCat === c ? ' active' : '');
+                btn.innerText = c;
+                btn.onclick = () => { currentCat = c; renderCats(); renderGrid(); };
+                catBar.appendChild(btn);
+            });
         }
-
         function renderGrid() {
             const grid = document.getElementById('menuGrid');
             grid.innerHTML = '';
             const filtered = (currentCat === "全部") ? allMenu : allMenu.filter(i => i.category === currentCat);
-            
             filtered.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'grid-item';
-                div.onclick = () => openDetail(item); // 這裡不傳 JSON 字串，傳物件
-                div.innerHTML = `
-                    <img src="${item.image || ''}" class="grid-img">
-                    <div class="grid-info">
-                        <h3>${item.name}</h3>
-                        <div style="color:var(--price-orange);font-weight:bold;">$${item.price}</div>
-                    </div>
-                `;
-                grid.appendChild(div);
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'grid-item';
+                itemDiv.onclick = function() { openDetail(item); };
+                itemDiv.innerHTML = `<img src="${item.image || ''}" class="grid-img"><div class="grid-info"><h3>${item.name}</h3><div class="price">$${item.price}</div></div>`;
+                grid.appendChild(itemDiv);
             });
         }
-
         function openDetail(item) {
             curItem = item; curQty = 1;
             document.getElementById('dImg').src = item.image || '';
             document.getElementById('dTitle').innerText = item.name;
             document.getElementById('dPrice').innerText = `$${item.price}`;
-            
             let optHtml = '';
             const edenOpts = ["冰", "去冰", "熱", "無糖", "加糖", "五辛素", "蛋奶素", "輕微醺", "深微醺"];
             edenOpts.forEach(key => {
                 if(item.opts && item.opts[key]) {
                     const p = (key==="深微醺") ? 40 : 0;
-                    optHtml += `<div class="opt-item" onclick="toggleOpt('${key}')"><span>${key} ${p>0?'+$'+p:''}</span><input type="checkbox" id="cb-${key}" data-p="${p}" onclick="event.stopPropagation();updateSub();"></div>`;
+                    optHtml += `<div class="opt-item" onclick="toggleOpt('${key}')"><span>${key} ${p>0?'+$'+p:''}</span><input type="checkbox" id="cb-${key}" data-p="${p}" onclick="event.stopPropagation(); updateSub();"></div>`;
                 }
             });
             document.getElementById('optContainer').innerHTML = optHtml;
             updateSub();
             document.getElementById('detailPage').style.display = 'block';
         }
-
         function toggleOpt(k) { const cb = document.getElementById('cb-'+k); if(cb) { cb.checked = !cb.checked; updateSub(); } }
         function changeQty(n) { curQty = Math.max(1, curQty + n); document.getElementById('dQty').innerText = curQty; updateSub(); }
+        
+        // 核心計算修正：強制轉為數字
         function updateSub() {
-            let p = curItem.price;
-            document.querySelectorAll('#optContainer input:checked').forEach(cb => p += parseInt(cb.dataset.p || 0));
+            let p = Number(curItem.price) || 0;
+            document.querySelectorAll('#optContainer input:checked').forEach(cb => p += Number(cb.dataset.p || 0));
             document.getElementById('dSub').innerText = p * curQty;
         }
-
         function confirmAddToCart() {
-            let opts = [], unitP = curItem.price;
+            let opts = [], unitP = Number(curItem.price) || 0;
             document.querySelectorAll('#optContainer input:checked').forEach(cb => {
-                opts.push(cb.id.replace('cb-','')); unitP += parseInt(cb.dataset.p);
+                opts.push(cb.id.replace('cb-',''));
+                unitP += Number(cb.dataset.p || 0);
             });
             const name = curItem.name + (opts.length?`(${opts.join(',')})`:'');
             for(let i=0; i<curQty; i++) cart.push({id: curItem.id, name: name, price: unitP});
             updateCartUI(); closeDetail();
         }
-
         function updateCartUI() {
             document.getElementById('cartCount').innerText = cart.length;
-            const total = cart.reduce((s,i) => s + i.price, 0);
+            const total = cart.reduce((s,i) => s + Number(i.price || 0), 0);
             document.getElementById('cartTotal').innerText = total;
             document.getElementById('cartItemsList').innerHTML = cart.map((i,idx) => `
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee;">
-                    <span>${i.name}</span>
-                    <span>$${i.price} <button onclick="cart.splice(${idx},1);updateCartUI();" style="color:red;border:none;background:none;">✕</button></span>
+                    <span style="font-size:15px;">${i.name}</span>
+                    <span style="font-weight:bold;">$${i.price} <button onclick="cart.splice(${idx},1);updateCartUI();" style="color:red;border:none;background:none;margin-left:10px;">✕</button></span>
                 </div>
             `).join('');
         }
-
         function openCart() { if(cart.length) document.getElementById('cartModal').style.display = 'block'; }
         function closeCart() { document.getElementById('cartModal').style.display = 'none'; }
         function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
-
         function submitOrder() {
-            db.ref('orders').push({table:tableNum, items:cart, totalPrice: cart.reduce((s,i)=>s+i.price,0), status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
+            const finalTotal = cart.reduce((s,i) => s + Number(i.price || 0), 0);
+            db.ref('orders').push({table:tableNum, items:cart, totalPrice: finalTotal, status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
             .then(() => { alert('訂單已送出，謝謝 Eden！'); cart = []; updateCartUI(); closeCart(); });
         }
     </script>
