@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 報表最終修復版</title>
+    <title>BlingOrder | 報表全數據管理</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -19,10 +19,10 @@
 <body>
     <div class="header-box">
         <a href="admin.html" style="text-decoration: none; color: #666;">⬅ 返回接單後台</a>
-        <h2 style="margin: 15px 0;">📊 報表數據終極修復</h2>
+        <h2 style="margin: 15px 0;">📊 報表全數據管理 (所有訂單皆會顯示)</h2>
         <div id="statsArea">
-            <div class="stat-card">今日營收：<span id="dayTotal" class="stat-val">$ 0</span></div>
-            <div class="stat-card">單數：<span id="orderCount" class="stat-val">0</span></div>
+            <div class="stat-card">今日統計：<span id="dayTotal" class="stat-val">$ 0</span></div>
+            <div class="stat-card">總單數：<span id="orderCount" class="stat-val">0</span></div>
         </div>
     </div>
 
@@ -36,19 +36,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let menuPrices = {}; // 用來存菜單價格對照表
-
-        // 1. 先讀取菜單價格，以防訂單資料損壞
+        let menuPrices = {};
         db.ref('menu').once('value', menuSnap => {
-            menuSnap.forEach(item => {
-                const data = item.val();
-                menuPrices[data.name] = Number(data.price || 0);
-            });
-            loadReport(); // 菜單讀完再讀報表
+            menuSnap.forEach(item => { menuPrices[item.val().name] = Number(item.val().price || 0); });
+            loadReport();
         });
 
         function loadReport() {
-            const today = new Date().toLocaleDateString();
+            // 抓今天日期做統計用
+            const todayStr = new Date().toLocaleDateString('zh-TW');
+
             db.ref('orders').on('value', snap => {
                 let html = '';
                 let total = 0;
@@ -59,40 +56,36 @@
                 orders.reverse();
 
                 orders.forEach(order => {
-                    const oDate = new Date(order.timestamp || parseInt(order.key)).toLocaleDateString();
+                    const orderDateObj = new Date(order.timestamp || parseInt(order.key));
+                    const orderDateStr = orderDateObj.toLocaleDateString('zh-TW');
                     
-                    // --- 超級兼容修復邏輯 ---
+                    // 金額修復
                     let finalAmt = 0;
-                    
                     if (order.items && Array.isArray(order.items)) {
-                        order.items.forEach(item => {
-                            if (typeof item === 'object' && item.price) {
-                                finalAmt += Number(item.price);
-                            } else {
-                                // 如果 items 是純文字 (如 "藍寶石漂浮飲")，去對照菜單價格
-                                const nameOnly = String(item).split('(')[0].trim();
-                                finalAmt += (menuPrices[nameOnly] || 0);
-                            }
+                        let itemsTotal = 0;
+                        let hasPrice = false;
+                        order.items.forEach(i => {
+                            if (typeof i === 'object' && i.price) { itemsTotal += Number(i.price); hasPrice = true; }
+                            else { itemsTotal += (menuPrices[String(i).split('(')[0].trim()] || 0); }
                         });
-                    }
-
-                    // 如果算出來還是 0，嘗試抓舊欄位 total 或 totalPrice，並過濾 150150 病毒
-                    if (finalAmt === 0) {
+                        finalAmt = itemsTotal;
+                    } else {
                         let raw = String(order.totalPrice || order.total || 0);
-                        if (raw.length > 4 && raw.substring(0, raw.length/2) === raw.substring(raw.length/2)) {
-                            finalAmt = Number(raw.substring(0, raw.length/2));
-                        } else {
-                            finalAmt = Number(raw);
-                        }
+                        finalAmt = (raw.length > 4 && raw.substring(0, raw.length/2) === raw.substring(raw.length/2)) ? Number(raw.substring(0, raw.length/2)) : Number(raw);
                     }
                     
-                    if(oDate === today) { total += finalAmt; count++; }
+                    // 只要是今天 3/27 的就加入統計
+                    if(orderDateStr === todayStr) {
+                        total += finalAmt;
+                        count++;
+                    }
 
                     let itemNames = (order.items || []).map(i => (typeof i === 'object' ? i.name : i)).join('、');
 
+                    // --- 不過濾日期，全部顯示出來讓你刪 ---
                     html += `
                         <tr>
-                            <td>${new Date(order.timestamp || parseInt(order.key)).toLocaleString()}</td>
+                            <td>${orderDateObj.toLocaleString()}</td>
                             <td>${order.table==="7"?"💎包廂":order.table}</td>
                             <td style="font-weight:bold; color:#db2777;">$ ${finalAmt}</td>
                             <td style="font-size: 0.8em;">${itemNames}</td>
