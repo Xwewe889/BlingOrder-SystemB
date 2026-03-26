@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 營收報表明細</title>
+    <title>BlingOrder | 營收報表明細 (數據修復版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -20,7 +20,7 @@
 <body>
     <div class="header-box">
         <a href="admin.html" style="text-decoration: none; color: #666;">⬅ 返回接單後台</a>
-        <h2 style="margin: 15px 0;">📊 營收報表明細</h2>
+        <h2 style="margin: 15px 0;">📊 營收報表明細 (數據已修復)</h2>
         <div id="statsArea">
             <div class="stat-card">今日營收：<span id="dayTotal" class="stat-val">$ 0</span></div>
             <div class="stat-card">單數：<span id="orderCount" class="stat-val">0</span></div>
@@ -53,32 +53,38 @@
                 let total = 0;
                 let count = 0;
                 
-                // 轉成陣列並反轉，讓最新的訂單在上面
                 const orders = [];
                 snap.forEach(child => { orders.push({key: child.key, ...child.val()}); });
-                orders.reverse();
+                orders.reverse(); // 最新在前
 
                 orders.forEach(order => {
                     const oDate = new Date(order.timestamp).toLocaleDateString();
                     const oTime = new Date(order.timestamp).toLocaleString();
                     
-                    // 強制轉換為數字，解決天文數字問題
-                    const p = Number(order.totalPrice || 0);
+                    // --- 核心修復邏輯：不信 totalPrice，自己重新加總 items ---
+                    let correctedAmt = 0;
+                    if (order.items && Array.isArray(order.items)) {
+                        order.items.forEach(item => {
+                            correctedAmt += Number(item.price || 0);
+                        });
+                    } else {
+                        correctedAmt = Number(order.totalPrice || 0);
+                    }
                     
-                    // 統計今日營收
                     if(oDate === today) {
-                        total += p;
+                        total += correctedAmt;
                         count++;
                     }
 
-                    // 組合品項文字
-                    let itemStr = (order.items || []).map(i => i.name).join('、');
+                    let itemStr = (order.items || []).map(i => {
+                        return (typeof i === 'object') ? i.name : i;
+                    }).join('、');
 
                     html += `
                         <tr>
                             <td style="font-size: 0.9em; color: #666;">${oTime}</td>
                             <td>${order.table==="7"?"💎 包廂":order.table+" 桌"}</td>
-                            <td style="font-weight:bold;">$ ${p}</td>
+                            <td style="font-weight:bold;">$ ${correctedAmt}</td>
                             <td style="font-size: 0.9em;">${itemStr}</td>
                             <td>
                                 <button class="btn-free" onclick="makeFree('${order.key}')">免單</button>
@@ -89,21 +95,21 @@
                 });
 
                 document.getElementById('reportTable').innerHTML = html;
-                document.getElementById('dayTotal').innerText = `$ ${total}`;
+                document.getElementById('dayTotal').innerText = `$ ${total.toLocaleString()}`;
                 document.getElementById('orderCount').innerText = count;
                 document.getElementById('avgPrice').innerText = `$ ${count > 0 ? Math.round(total / count) : 0}`;
             });
         }
 
         function deleteOrder(key) {
-            if(confirm('確定要刪除這筆訂單嗎？（刪除後無法復原）')) {
+            if(confirm('確定要刪除這筆訂單嗎？')) {
                 db.ref(`orders/${key}`).remove();
             }
         }
 
         function makeFree(key) {
             if(confirm('要將此單改為免單（$0）嗎？')) {
-                db.ref(`orders/${key}`).update({totalPrice: 0});
+                db.ref(`orders/${key}`).update({totalPrice: 0, items: []});
             }
         }
 
