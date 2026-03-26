@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 營運數據分析中心</title>
+    <title>BlingOrder | 數據分析中心</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -60,6 +60,7 @@
     const db = firebase.database();
     let pieChart = null;
 
+    // 統一格式化日期，確保 18:00 的新單能被正確歸類到「今天」
     function getStandardDate(ts) {
         const d = new Date(ts);
         return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
@@ -77,6 +78,7 @@
 
         snap.forEach(child => {
             const o = child.val();
+            // 讀取金額 (優先讀取清洗後的 totalPrice)
             const amt = Number(o.totalPrice || o.total || 0);
             const ts = Number(o.timestamp || parseInt(child.key));
             if (isNaN(ts) || amt === 0) return;
@@ -91,11 +93,12 @@
             if (dateStr === yesterdayStr) yesterdaySum += amt;
             if (dateObj.getMonth() === currentMonth) monthSum += amt;
 
+            // 銷售統計
             if (Array.isArray(o.items)) {
                 o.items.forEach(item => {
                     let name = (typeof item === 'object') ? (item.name || "未知") : String(item);
                     let pureName = name.split('(')[0].trim();
-                    itemSales[pureName] = (itemSales[pureName] || 0) + 1;
+                    if (pureName) itemSales[pureName] = (itemSales[pureName] || 0) + 1;
                 });
             }
         });
@@ -104,29 +107,39 @@
         document.getElementById('yesterday-rev').innerText = `$${yesterdaySum.toLocaleString()}`;
         document.getElementById('month-rev').innerText = `$${monthSum.toLocaleString()}`;
         document.getElementById('total-rev').innerText = `$${totalSum.toLocaleString()}`;
-        document.getElementById('sync-time').innerText = `同步校正完成：${new Date().toLocaleString()}`;
+        document.getElementById('sync-time').innerText = `最後更新：${new Date().toLocaleTimeString()}`;
 
         updateVisuals(itemSales, dailyTotals);
     });
 
     function updateVisuals(itemData, dailyData) {
         const dailyLog = document.getElementById('daily-log');
-        dailyLog.innerHTML = Object.keys(dailyData).sort((a,b)=>new Date(b)-new Date(a))
-            .map(date => `<div class="daily-item"><span>${date}</span><span style="color:var(--primary-pink);font-weight:800">$${dailyData[date].toLocaleString()}</span></div>`).join('');
+        const sortedDates = Object.keys(dailyData).sort((a,b) => new Date(b) - new Date(a));
+        dailyLog.innerHTML = sortedDates.slice(0, 10).map(date => `
+            <div class="daily-item">
+                <span>${date}</span>
+                <span style="color:var(--primary-pink);font-weight:800">$${dailyData[date].toLocaleString()}</span>
+            </div>
+        `).join('');
 
-        const sortedItems = Object.entries(itemData).sort((a,b)=>b[1]-a[1]);
+        const sortedItems = Object.entries(itemData).sort((a,b) => b[1] - a[1]);
         const list = document.getElementById('rank-list');
-        list.innerHTML = sortedItems.slice(0, 15).map(([name, qty], i) => `<div class="rank-item"><span>${i+1}. ${name}</span><span style="color:#aaa">${qty} 份</span></div>`).join('');
+        list.innerHTML = sortedItems.slice(0, 15).map(([name, qty], i) => `
+            <div class="rank-item">
+                <span>${i+1}. ${name}</span>
+                <span style="color:#aaa">${qty} 份</span>
+            </div>
+        `).join('');
 
         const ctx = document.getElementById('pieChart').getContext('2d');
         if (pieChart) pieChart.destroy();
         pieChart = new Chart(ctx, {
             type: 'pie',
             data: {
-                labels: sortedItems.slice(0, 10).map(x => x[0]),
+                labels: sortedItems.slice(0, 8).map(x => x[0]),
                 datasets: [{
-                    data: sortedItems.slice(0, 10).map(x => x[1]),
-                    backgroundColor: ['#ff85a2', '#ffb3c1', '#ffc2d1', '#ffdee5', '#fb6f92', '#ff8fab', '#ffb3c1', '#ffe5ec']
+                    data: sortedItems.slice(0, 8).map(x => x[1]),
+                    backgroundColor: ['#ff85a2', '#ffb3c1', '#ffc2d1', '#ffdee5', '#fb6f92', '#ff8fab', '#ffa5ab', '#ffd6d6']
                 }]
             },
             options: { responsive: true, maintainAspectRatio: false }
