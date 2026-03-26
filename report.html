@@ -2,34 +2,49 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 報表全數據強制管理</title>
+    <title>BlingOrder | 營收報表明細 (回歸原店格式版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: 'Microsoft JhengHei', sans-serif; background: #fdf2f8; margin: 0; padding: 20px; }
         .header-box { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .stat-card { display: inline-block; background: #db2777; color: white; padding: 10px 20px; border-radius: 10px; margin-right: 15px; }
-        .stat-val { font-weight: bold; font-size: 1.2em; margin-left: 5px;}
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
+        .stat-card { display: inline-block; background: #fff5f7; padding: 10px 20px; border-radius: 10px; margin-right: 15px; border: 1px solid #fce7f3; }
+        .stat-val { font-weight: bold; color: #db2777; font-size: 1.2em; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; margin-top: 10px; }
         th { background: #ff85a2; color: white; padding: 15px; text-align: left; }
         td { padding: 15px; border-bottom: 1px solid #eee; }
-        .btn-del { background: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .tag-today { background: #4caf50; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left: 5px; }
+        .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        
+        /* 抓鬼專區樣式 */
+        #ghost-catcher { background: #fff1f2; border: 2px dashed #fda4af; padding: 15px; border-radius: 15px; margin-bottom: 20px; display: none; }
+        .ghost-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; margin: 5px 0; border-radius: 8px; border: 1px solid #fecdd3; }
     </style>
 </head>
 <body>
     <div class="header-box">
         <a href="admin.html" style="text-decoration: none; color: #666;">⬅ 返回接單後台</a>
-        <h2 style="margin: 15px 0;">📊 強制數據管理 (顯示最後 50 筆)</h2>
+        <h2 style="margin: 15px 0; color: #db2777;">🌸 BlingOrder 營收報表明細</h2>
         <div id="statsArea">
-            <div class="stat-card">清單總金額：<span id="dayTotal" class="stat-val">$ 0</span></div>
-            <div class="stat-card">清單總筆數：<span id="orderCount" class="stat-val">0</span></div>
+            <div class="stat-card">今日營收：<span id="dayTotal" class="stat-val">$ 0</span></div>
+            <div class="stat-card">單數：<span id="orderCount" class="stat-val">0</span></div>
         </div>
-        <p style="color: #888; font-size: 14px; margin-top: 10px;">提示：請找尋「日期為 3/27」或「金額異常」的訂單並點擊刪除。</p>
+    </div>
+
+    <div id="ghost-catcher">
+        <h4 style="margin:0 0 10px 0; color: #e11d48;">🎯 異常數據清理 (Dashboard 偵測到的 3/27 訂單)</h4>
+        <div id="ghost-list"></div>
     </div>
 
     <table>
-        <thead><tr><th>下單時間</th><th>桌號</th><th>計算金額</th><th>品項內容</th><th>管理操作</th></tr></thead>
+        <thead>
+            <tr>
+                <th>日期時間</th>
+                <th>桌號</th>
+                <th>金額</th>
+                <th>品項清單</th>
+                <th>管理</th>
+            </tr>
+        </thead>
         <tbody id="reportTable"></tbody>
     </table>
 
@@ -38,67 +53,84 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let menuPrices = {};
-        db.ref('menu').once('value', menuSnap => {
-            menuSnap.forEach(item => { menuPrices[item.val().name] = Number(item.val().price || 0); });
-            loadAllOrders();
-        });
+        function loadReport() {
+            const now = new Date();
+            // 統一 Dashboard 的判定邏輯
+            const todayStr = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+            const targetGhostDate = "2026/3/27"; // 強制鎖定你要刪的那一天
 
-        function loadAllOrders() {
-            const todayStr = new Date().toLocaleDateString('zh-TW');
-
-            // 限制讀取最後 50 筆，避免資料太多卡住
-            db.ref('orders').limitToLast(50).on('value', snap => {
+            db.ref('orders').on('value', snap => {
                 let html = '';
+                let ghostHtml = '';
                 let total = 0;
                 let count = 0;
+                let ghostCount = 0;
                 
                 const orders = [];
                 snap.forEach(child => { orders.push({key: child.key, ...child.val()}); });
-                orders.reverse(); // 最新排最前
+                orders.reverse();
 
                 orders.forEach(order => {
-                    const orderDateObj = new Date(order.timestamp || parseInt(order.key));
-                    const orderDateStr = orderDateObj.toLocaleDateString('zh-TW');
+                    const d = new Date(order.timestamp || parseInt(order.key));
+                    const oDateStr = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+                    const oTime = d.toLocaleString();
                     
-                    // 金額邏輯
-                    let finalAmt = 0;
-                    if (order.items && Array.isArray(order.items)) {
-                        let itemsTotal = 0;
-                        order.items.forEach(i => {
-                            if (typeof i === 'object' && i.price) itemsTotal += Number(i.price);
-                            else itemsTotal += (menuPrices[String(i).split('(')[0].trim()] || 0);
-                        });
-                        finalAmt = itemsTotal;
-                    } else {
-                        let raw = String(order.totalPrice || order.total || 0);
-                        finalAmt = (raw.length > 4 && raw.substring(0, raw.length/2) === raw.substring(raw.length/2)) ? Number(raw.substring(0, raw.length/2)) : Number(raw);
+                    // 金額讀取 (已清洗過的資料直接讀 totalPrice)
+                    let amt = Number(order.totalPrice || order.total || 0);
+
+                    // 1. 如果是今天 (3/27) 的單，列入報表統計
+                    if(oDateStr === todayStr) {
+                        total += amt;
+                        count++;
                     }
-                    
-                    total += finalAmt;
-                    count++;
+
+                    // 2. 如果是 3/27 的單，強行顯示在「抓鬼專區」讓你刪除
+                    if(oDateStr === targetGhostDate) {
+                        ghostCount++;
+                        ghostHtml += `
+                            <div class="ghost-item">
+                                <span><b>時間：</b>${oTime} | <b>桌號：</b>${order.table} | <b>金額：</b>$${amt}</span>
+                                <button class="btn-del" onclick="deleteOrder('${order.key}')">永久刪除此測試單</button>
+                            </div>
+                        `;
+                    }
 
                     let itemNames = (order.items || []).map(i => (typeof i === 'object' ? i.name : i)).join('、');
-                    let isToday = (orderDateStr === todayStr) ? '<span class="tag-today">今日</span>' : '';
 
                     html += `
                         <tr>
-                            <td>${orderDateObj.toLocaleString()} ${isToday}</td>
-                            <td style="font-weight:bold;">${order.table==="7"?"💎包廂":order.table}</td>
-                            <td style="font-weight:bold; color:#db2777;">$ ${finalAmt}</td>
-                            <td style="font-size: 0.85em; color: #555;">${itemNames}</td>
-                            <td><button class="btn-del" onclick="deleteOrder('${order.key}')">刪除訂單</button></td>
+                            <td style="font-size: 0.9em; color: #666;">${oTime}</td>
+                            <td>${order.table==="7"?"💎 包廂":order.table+" 桌"}</td>
+                            <td style="font-weight:bold;">$ ${amt}</td>
+                            <td style="font-size: 0.8em;">${itemNames}</td>
+                            <td><button class="btn-del" onclick="deleteOrder('${order.key}')">刪除</button></td>
                         </tr>
                     `;
                 });
 
+                // 更新報表 UI
                 document.getElementById('reportTable').innerHTML = html;
                 document.getElementById('dayTotal').innerText = `$ ${total.toLocaleString()}`;
                 document.getElementById('orderCount').innerText = count;
+
+                // 更新抓鬼區 UI
+                const catcher = document.getElementById('ghost-catcher');
+                if (ghostCount > 0) {
+                    catcher.style.display = 'block';
+                    document.getElementById('ghost-list').innerHTML = ghostHtml;
+                } else {
+                    catcher.style.display = 'none';
+                }
             });
         }
 
-        function deleteOrder(key) { if(confirm('確定要永久刪除這筆訂單嗎？')) db.ref(`orders/${key}`).remove(); }
+        function deleteOrder(key) {
+            if(confirm('確定要刪除這筆訂單嗎？（刪除後營收將會扣除）')) {
+                db.ref(`orders/${key}`).remove();
+            }
+        }
+
+        loadReport();
     </script>
 </body>
 </html>
