@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 營收報表明細 (數據修復版)</title>
+    <title>BlingOrder | 營收報表明細 (最終兼容修正版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -14,17 +14,15 @@
         th { background: #ff85a2; color: white; padding: 15px; text-align: left; }
         td { padding: 15px; border-bottom: 1px solid #eee; }
         .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
-        .btn-free { background: #4caf50; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
     </style>
 </head>
 <body>
     <div class="header-box">
         <a href="admin.html" style="text-decoration: none; color: #666;">⬅ 返回接單後台</a>
-        <h2 style="margin: 15px 0;">📊 營收報表明細 (數據已修復)</h2>
+        <h2 style="margin: 15px 0;">📊 營收報表明細 (全數據兼容版)</h2>
         <div id="statsArea">
             <div class="stat-card">今日營收：<span id="dayTotal" class="stat-val">$ 0</span></div>
             <div class="stat-card">單數：<span id="orderCount" class="stat-val">0</span></div>
-            <div class="stat-card">平均：<span id="avgPrice" class="stat-val">$ 0</span></div>
         </div>
     </div>
 
@@ -55,18 +53,38 @@
                 
                 const orders = [];
                 snap.forEach(child => { orders.push({key: child.key, ...child.val()}); });
-                orders.reverse(); // 最新在前
+                orders.reverse();
 
                 orders.forEach(order => {
                     const oDate = new Date(order.timestamp).toLocaleDateString();
                     const oTime = new Date(order.timestamp).toLocaleString();
                     
-                    // --- 核心修復邏輯：不信 totalPrice，自己重新加總 items ---
+                    // --- 核心修復邏輯 ---
                     let correctedAmt = 0;
+                    
+                    // 1. 優先嘗試加總 items 裡的 price
                     if (order.items && Array.isArray(order.items)) {
+                        let itemsTotal = 0;
+                        let hasItemPrice = false;
                         order.items.forEach(item => {
-                            correctedAmt += Number(item.price || 0);
+                            if (item.price !== undefined) {
+                                itemsTotal += Number(item.price);
+                                hasItemPrice = true;
+                            }
                         });
+                        
+                        if (hasItemPrice) {
+                            correctedAmt = itemsTotal;
+                        } else {
+                            // 2. 如果 items 沒價格，抓 totalPrice，但要防範 150150 文字拼接
+                            let rawPrice = String(order.totalPrice || 0);
+                            if (rawPrice.length > 5 && rawPrice.includes(rawPrice.substring(0, rawPrice.length/2))) {
+                                // 像是 "150150" 這種重複的，取一半
+                                correctedAmt = Number(rawPrice.substring(0, rawPrice.length/2));
+                            } else {
+                                correctedAmt = Number(rawPrice);
+                            }
+                        }
                     } else {
                         correctedAmt = Number(order.totalPrice || 0);
                     }
@@ -76,20 +94,18 @@
                         count++;
                     }
 
-                    let itemStr = (order.items || []).map(i => {
-                        return (typeof i === 'object') ? i.name : i;
+                    let itemNames = (order.items || []).map(i => {
+                        if (typeof i === 'object') return i.name || "未知";
+                        return String(i);
                     }).join('、');
 
                     html += `
                         <tr>
-                            <td style="font-size: 0.9em; color: #666;">${oTime}</td>
+                            <td>${oTime}</td>
                             <td>${order.table==="7"?"💎 包廂":order.table+" 桌"}</td>
-                            <td style="font-weight:bold;">$ ${correctedAmt}</td>
-                            <td style="font-size: 0.9em;">${itemStr}</td>
-                            <td>
-                                <button class="btn-free" onclick="makeFree('${order.key}')">免單</button>
-                                <button class="btn-del" onclick="deleteOrder('${order.key}')">刪除</button>
-                            </td>
+                            <td style="font-weight:bold; color:#db2777;">$ ${correctedAmt}</td>
+                            <td style="font-size: 0.9em;">${itemNames}</td>
+                            <td><button class="btn-del" onclick="deleteOrder('${order.key}')">刪除</button></td>
                         </tr>
                     `;
                 });
@@ -97,19 +113,12 @@
                 document.getElementById('reportTable').innerHTML = html;
                 document.getElementById('dayTotal').innerText = `$ ${total.toLocaleString()}`;
                 document.getElementById('orderCount').innerText = count;
-                document.getElementById('avgPrice').innerText = `$ ${count > 0 ? Math.round(total / count) : 0}`;
             });
         }
 
         function deleteOrder(key) {
             if(confirm('確定要刪除這筆訂單嗎？')) {
                 db.ref(`orders/${key}`).remove();
-            }
-        }
-
-        function makeFree(key) {
-            if(confirm('要將此單改為免單（$0）嗎？')) {
-                db.ref(`orders/${key}`).update({totalPrice: 0, items: []});
             }
         }
 
