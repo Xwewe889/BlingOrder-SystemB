@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 接單看板 (完美修正版)</title>
+    <title>BlingOrder | 接單看板 (數字精確版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
@@ -26,7 +26,7 @@
     <div id="curtain"><button class="curtain-btn" onclick="startSystem()">💎 啟動語音接單系統</button></div>
     <div class="header">
         <h1 style="color:#db2777">BlingOrder 接單看板</h1>
-        <div id="dailySales" style="font-size: 24px; font-weight: bold; background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;">今日：$0</div>
+        <div id="dailySales" style="font-size: 24px; font-weight: bold; background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;">今日：$ 0</div>
     </div>
     <div id="orderBoard"></div>
 
@@ -46,35 +46,33 @@
 
         function startSystem() {
             document.getElementById('curtain').style.display = 'none';
-            speak('系統已啟動，祝 Eden 生意興隆');
+            speak('系統已啟動');
             loadOrders();
         }
 
         function loadOrders() {
-            // 監聽待處理訂單
             db.ref('orders').orderByChild('status').equalTo('待處理').on('value', snap => {
                 const currentCount = snap.numChildren();
-                
-                // 語音修正：只有在「訂單數量增加」時才報警，按結帳（數量沒增）時不說話
-                if (lastCount !== -1 && currentCount > lastCount) {
-                    speak('您有新訂單');
-                }
+                if (lastCount !== -1 && currentCount > lastCount) { speak('您有新訂單'); }
                 lastCount = currentCount;
 
                 const board = document.getElementById('orderBoard');
                 board.innerHTML = '';
                 const today = new Date().toLocaleDateString();
                 
-                // 計算今日營收修正：確保使用 Number 加法
+                // 強制數值化計算今日營收
                 db.ref('orders').once('value', allSnap => {
                     let sTotal = 0;
                     allSnap.forEach(os => {
                         const o = os.val();
-                        if(new Date(o.timestamp).toLocaleDateString() === today) {
-                            sTotal += Number(o.totalPrice || 0); 
+                        const oDate = new Date(o.timestamp).toLocaleDateString();
+                        if(oDate === today) {
+                            // 關鍵：先確保轉為整數再相加
+                            const orderPrice = parseInt(o.totalPrice, 10) || 0;
+                            sTotal = sTotal + orderPrice;
                         }
                     });
-                    document.getElementById('dailySales').innerText = `今日：$${sTotal}`;
+                    document.getElementById('dailySales').innerText = `今日：$ ${sTotal}`;
                 });
 
                 snap.forEach(orderSnap => {
@@ -104,7 +102,7 @@
                         <div class="order-card">
                             <div class="table-area">
                                 <div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div>
-                                <div style="font-size:20px;font-weight:bold;margin-top:10px;">$${order.totalPrice}</div>
+                                <div style="font-size:20px;font-weight:bold;margin-top:10px;">$ ${parseInt(order.totalPrice, 10) || 0}</div>
                             </div>
                             <div class="content-area">${itemsHtml}</div>
                             <div class="btn-group">
