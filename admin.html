@@ -2,100 +2,87 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 接單看板 (無圖效能版)</title>
+    <title>BlingOrder | 接單看板 (語音版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: 'Microsoft JhengHei', sans-serif; background: #fdf2f8; margin: 0; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 15px; border-bottom: 3px solid #fbcfe8; margin-bottom: 20px; }
-        #orderBoard { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        .order-card { background: white; border-radius: 12px; padding: 20px; display: flex; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .order-card { background: white; border-radius: 12px; padding: 20px; display: flex; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .table-area { min-width: 120px; text-align: center; border-right: 2px solid #fbcfe8; margin-right: 20px; }
         .table-no { font-size: 45px; font-weight: bold; color: #db2777; }
         .content-area { flex-grow: 1; display: flex; flex-wrap: wrap; gap: 10px; }
-        .item-row { background: #fff5f7; border: 1px solid #fce7f3; border-radius: 8px; padding: 12px; width: calc(33.3% - 10px); box-sizing: border-box; }
-        .item-name { font-size: 22px; font-weight: bold; }
-        .item-opt { color: #db2777; font-weight: bold; font-size: 18px; display: block; margin-top: 5px; }
-        .item-qty { font-size: 32px; font-weight: bold; margin-top: 5px; }
-        .btn-group { min-width: 150px; display: flex; flex-direction: column; gap: 10px; margin-left: 20px; }
+        .item-row { background: #fff5f7; border: 1px solid #fce7f3; border-radius: 8px; padding: 12px; width: calc(33.3% - 10px); }
+        .btn-group { min-width: 150px; display: flex; flex-direction: column; gap: 10px; }
         button { font-size: 20px; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .btn-pay { background: #fbbf24; }
-        .btn-pay.done { background: #eee; color: #999; }
         .btn-ship { background: #10b981; color: white; }
+        #curtain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(253,242,248,0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .curtain-btn { padding: 40px 80px; font-size: 36px; background: #db2777; color: white; border-radius: 20px; border: none; }
     </style>
 </head>
 <body>
+    <div id="curtain"><button class="curtain-btn" onclick="startSystem()">💎 啟動語音接單系統</button></div>
     <div class="header">
-        <h1 style="color:#db2777">BlingOrder 接單看板 (無圖片版)</h1>
+        <h1 style="color:#db2777">BlingOrder 接單看板</h1>
         <div id="dailySales" style="font-size: 24px; font-weight: bold; background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;">今日：$0</div>
     </div>
     <div id="orderBoard"></div>
-
     <script>
         const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let menuData = {};
-
+        let menuData = {}, firstLoad = true;
         db.ref('menu').on('value', snap => { menuData = snap.val() || {}; });
 
-        db.ref('orders').orderByChild('status').equalTo('待處理').on('value', (snap) => {
-            const board = document.getElementById('orderBoard');
-            board.innerHTML = '';
-            let total = 0;
-            const today = new Date().toLocaleDateString();
+        function speak(text) {
+            const synth = window.speechSynthesis;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'zh-TW'; utter.rate = 1.0; synth.speak(utter);
+        }
 
-            // 統計營收
-            db.ref('orders').once('value', allSnap => {
-                let sTotal = 0;
-                allSnap.forEach(os => { if(new Date(os.val().timestamp).toLocaleDateString() === today) sTotal += os.val().totalPrice; });
-                document.getElementById('dailySales').innerText = `今日：$${sTotal}`;
-            });
+        function startSystem() {
+            document.getElementById('curtain').style.display = 'none';
+            speak('系統已啟動，祝 Eden 生意興隆'); loadOrders();
+        }
 
-            snap.forEach((orderSnap) => {
-                const order = orderSnap.val();
-                const orderId = orderSnap.key;
-                let itemsMap = {};
+        function loadOrders() {
+            db.ref('orders').orderByChild('status').equalTo('待處理').on('value', snap => {
+                if (!firstLoad && snap.numChildren() > 0) { speak('您有新訂單'); }
+                firstLoad = false;
+                const board = document.getElementById('orderBoard'); board.innerHTML = '';
+                let total = 0; const today = new Date().toLocaleDateString();
                 
-                order.items.forEach(item => {
-                    const key = item.name;
-                    if(!itemsMap[key]) {
-                        itemsMap[key] = { 
-                            name: item.name.split('(')[0], 
-                            opt: item.name.includes('(') ? '('+item.name.split('(')[1] : '',
-                            qty: 0,
-                            cat: menuData[item.id]?.category || 'Z'
-                        };
-                    }
-                    itemsMap[key].qty++;
+                db.ref('orders').once('value', allSnap => {
+                    let sTotal = 0;
+                    allSnap.forEach(os => { if(new Date(os.val().timestamp).toLocaleDateString() === today) sTotal += Number(os.val().totalPrice || 0); });
+                    document.getElementById('dailySales').innerText = `今日：$${sTotal}`;
                 });
 
-                const sortedItems = Object.values(itemsMap).sort((a,b) => a.cat.localeCompare(b.cat));
-                let itemsHtml = sortedItems.map(i => `
-                    <div class="item-row">
-                        <span class="item-name">${i.name}</span>
-                        ${i.opt ? `<span class="item-opt">${i.opt}</span>` : ''}
-                        <div class="item-qty">× ${i.qty}</div>
-                    </div>
-                `).join('');
-
-                board.innerHTML += `
-                    <div class="order-card">
-                        <div class="table-area">
-                            <div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div>
-                            <div style="font-size:18px;margin-top:10px;">$${order.totalPrice}</div>
+                snap.forEach(orderSnap => {
+                    const order = orderSnap.val(); const orderId = orderSnap.key;
+                    let itemsMap = {};
+                    order.items.forEach(item => {
+                        const key = item.name;
+                        if(!itemsMap[key]) { itemsMap[key] = { name: item.name.split('(')[0], opt: item.name.includes('(') ? '('+item.name.split('(')[1] : '', qty: 0 }; }
+                        itemsMap[key].qty++;
+                    });
+                    let itemsHtml = Object.values(itemsMap).map(i => `
+                        <div class="item-row"><div style="font-size:22px;font-weight:bold">${i.name}</div><div style="color:#db2777">${i.opt}</div><div style="font-size:32px;font-weight:bold">× ${i.qty}</div></div>
+                    `).join('');
+                    board.innerHTML += `
+                        <div class="order-card">
+                            <div class="table-area"><div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div><div>$${order.totalPrice}</div></div>
+                            <div class="content-area">${itemsHtml}</div>
+                            <div class="btn-group">
+                                <button class="btn-pay" onclick="db.ref('orders/${orderId}').update({payStatus:'已結帳'})">結帳</button>
+                                <button class="btn-ship" onclick="db.ref('orders/${orderId}').update({status:'已完成'})">出餐</button>
+                            </div>
                         </div>
-                        <div class="content-area">${itemsHtml}</div>
-                        <div class="btn-group">
-                            <button class="btn-pay ${order.payStatus==='已結帳'?'done':''}" onclick="db.ref('orders/${orderId}').update({payStatus:'已結帳'})">
-                                ${order.payStatus==='已結帳'?'已結帳':'結帳'}
-                            </button>
-                            <button class="btn-ship" onclick="db.ref('orders/${orderId}').update({status:'已完成'})">出餐</button>
-                        </div>
-                    </div>
-                `;
+                    `;
+                });
             });
-        });
+        }
     </script>
 </body>
 </html>
