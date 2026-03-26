@@ -3,50 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BlingOrder | 專業九宮格點餐</title>
+    <title>BlingOrder</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         :root { --main-pink: #fdf2f8; --accent-pink: #db2777; --price-orange: #ff5722; }
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 120px; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #f9f9f9; margin: 0; padding-bottom: 110px; }
         
-        /* 標題與分類 */
-        .header { background: white; padding: 12px; text-align: center; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 100; }
-        .category-bar { background: white; padding: 10px; overflow-x: auto; white-space: nowrap; display: flex; gap: 10px; border-bottom: 1px solid #eee; position: sticky; top: 52px; z-index: 90; }
+        /* 1. 頂部導覽列 (固定) */
+        .top-nav { position: sticky; top: 0; z-index: 1000; background: white; }
+        .header { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+        .category-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; border-bottom: 1px solid #eee; scrollbar-width: none; }
+        .category-bar::-webkit-scrollbar { display: none; }
         .cat-btn { padding: 8px 18px; background: #f3f4f6; border-radius: 20px; font-size: 14px; border: none; cursor: pointer; color: #666; }
         .cat-btn.active { background: var(--accent-pink); color: white; font-weight: bold; }
 
-        /* 九宮格穩定版 */
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; box-sizing: border-box; }
-        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; }
-        .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; display: block; background: #eee; }
+        /* 2. 九宮格內容區 */
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+        .grid-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #f0f0f0; height: fit-content; }
+        .grid-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #eee; display: block; }
         .grid-info { padding: 10px; text-align: center; }
         .grid-info h3 { margin: 0; font-size: 15px; color: #333; height: 40px; line-height: 1.3; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .grid-info .price { color: var(--price-orange); font-weight: bold; margin-top: 5px; font-size: 16px; }
 
-        /* 詳情頁詳情 */
-        #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 300; overflow-y: auto; }
-        .close-btn { position: absolute; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 310; font-size: 20px; }
+        /* 3. 詳情彈窗 */
+        #detailPage { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 2000; overflow-y: auto; }
+        .close-btn { position: absolute; top: 15px; left: 15px; width: 38px; height: 38px; background: rgba(255,255,255,0.8); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; z-index: 2100; font-size: 20px; }
         .detail-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
         .detail-body { padding: 20px; }
         .opt-item { display: flex; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid #f5f5f5; align-items: center; }
         .opt-item input { width: 22px; height: 22px; accent-color: var(--price-orange); }
 
-        /* 固定置底結帳區 (修正看不見的問題) */
-        .cart-fixed-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 200; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); }
-        .checkout-trigger { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 10px rgba(219,39,119,0.3); }
+        /* 4. 詳情頁底部控制器 */
+        .detail-footer { position: fixed; bottom: 0; width: 100%; background: white; padding: 15px 20px; display: flex; align-items: center; border-top: 1px solid #eee; box-sizing: border-box; }
+        .add-cart-confirm { flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-left: 15px; }
 
-        /* 購物車 Modal */
-        #cartModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 400; }
-        .cart-modal-content { background: white; width: 90%; margin: 15% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
+        /* 5. 永久置底結帳條 */
+        .cart-fixed-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 3px solid var(--accent-pink); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; z-index: 1500; }
+        .checkout-trigger { background: var(--accent-pink); color: white; border: none; padding: 12px 25px; border-radius: 50px; font-size: 18px; font-weight: bold; }
+
+        /* 6. 購物車清單彈窗 */
+        #cartModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 3000; }
+        .cart-modal-content { background: white; width: 90%; margin: 20% auto; border-radius: 15px; padding: 20px; box-sizing: border-box; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h3 style="margin:0; color: var(--accent-pink); font-size: 20px;">💎 BlingOrder</h3>
-        <div id="displayTable" style="font-size: 14px; color: #888;"></div>
+
+    <div class="top-nav">
+        <div class="header">
+            <h3 style="margin:0; color: var(--accent-pink); font-size: 20px;">💎 BlingOrder</h3>
+            <div id="displayTable" style="font-size: 14px; color: #888;"></div>
+        </div>
+        <div id="catBar" class="category-bar"></div>
     </div>
-    
-    <div id="catBar" class="category-bar"></div>
+
     <div id="menuGrid" class="menu-grid"></div>
 
     <div class="cart-fixed-bar">
@@ -58,25 +68,25 @@
         <div class="close-btn" onclick="closeDetail()">✕</div>
         <img id="dImg" class="detail-img">
         <div class="detail-body">
-            <h2 id="dTitle" style="margin:0">品項名稱</h2>
-            <div id="dPrice" style="color:var(--price-orange); font-size:24px; font-weight:bold; margin:10px 0;">$0</div>
+            <h2 id="dTitle" style="margin:0; font-size: 22px;"></h2>
+            <div id="dPrice" style="color:var(--price-orange); font-size:24px; font-weight:bold; margin:10px 0;"></div>
             <div id="optContainer"></div>
         </div>
-        <div style="position: sticky; bottom: 0; background: white; padding: 15px 20px; display: flex; align-items: center; border-top: 1px solid #eee;">
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(-1)">-</button>
-            <span id="dQty" style="font-size: 22px; font-weight: bold; margin: 0 20px;">1</span>
-            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;font-size:20px;" onclick="changeQty(1)">+</button>
-            <button style="flex-grow: 1; background: var(--price-orange); color: white; border: none; padding: 15px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-left: 15px;" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
+        <div class="detail-footer">
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(-1)">-</button>
+            <span id="dQty" style="font-size: 20px; font-weight: bold; margin: 0 15px;">1</span>
+            <button style="width:35px;height:35px;border-radius:50%;border:1px solid #ccc;background:white;" onclick="changeQty(1)">+</button>
+            <button class="add-cart-confirm" onclick="confirmAddToCart()">加入購物車 • $ <span id="dSub">0</span></button>
         </div>
     </div>
 
     <div id="cartModal" onclick="closeCart()">
         <div class="cart-modal-content" onclick="event.stopPropagation()">
-            <h3 style="margin-top:0; color:var(--accent-pink);">📋 我的點餐清單</h3>
+            <h3 style="margin-top:0; color:var(--accent-pink);">📋 點餐清單確認</h3>
             <div id="cartItemsList" style="max-height: 40vh; overflow-y: auto;"></div>
             <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
             <button onclick="submitOrder()" style="width:100%; background:var(--accent-pink); color:white; border:none; padding:15px; border-radius:10px; font-size:18px; font-weight:bold;">確認送出訂單</button>
-            <button onclick="closeCart()" style="width:100%; background:#f0f0f0; border:none; padding:10px; border-radius:10px; margin-top:10px; color:#666;">回菜單</button>
+            <button onclick="closeCart()" style="width:100%; background:#f0f0f0; border:none; padding:10px; border-radius:10px; margin-top:10px;">回菜單</button>
         </div>
     </div>
 
@@ -89,7 +99,6 @@
 
         let allMenu = [], currentCat = "全部", cart = [], curItem = null, curQty = 1;
 
-        // 讀取菜單
         db.ref('menu').on('value', snap => {
             allMenu = [];
             snap.forEach(c => allMenu.push({...c.val(), id: c.key}));
@@ -107,9 +116,9 @@
         function filterCat(c) { currentCat = c; renderCats(); renderGrid(); }
 
         function renderGrid() {
-            const filtered = currentCat === "全部" ? allMenu : allMenu.filter(i => i.category === currentCat);
             const grid = document.getElementById('menuGrid');
-            grid.innerHTML = ''; // 清空
+            grid.innerHTML = '';
+            const filtered = currentCat === "全部" ? allMenu : allMenu.filter(i => i.category === currentCat);
             
             filtered.forEach(item => {
                 const itemDiv = document.createElement('div');
@@ -119,7 +128,7 @@
                     <img src="${item.image || ''}" class="grid-img">
                     <div class="grid-info">
                         <h3>${item.name}</h3>
-                        <div style="color:var(--price-orange);font-weight:bold;margin-top:5px;">$${item.price}</div>
+                        <div class="price">$${item.price}</div>
                     </div>
                 `;
                 grid.appendChild(itemDiv);
@@ -145,19 +154,9 @@
             document.getElementById('detailPage').style.display = 'block';
         }
 
-        function toggleOpt(k) { 
-            const cb = document.getElementById('cb-'+k); 
-            if(cb) { cb.checked = !cb.checked; updateDetailSub(); }
-        }
-
-        function changeQty(n) { 
-            curQty = Math.max(1, curQty + n); 
-            document.getElementById('dQty').innerText = curQty; 
-            updateDetailSub(); 
-        }
-
+        function toggleOpt(k) { const cb = document.getElementById('cb-'+k); if(cb) { cb.checked = !cb.checked; updateDetailSub(); } }
+        function changeQty(n) { curQty = Math.max(1, curQty + n); document.getElementById('dQty').innerText = curQty; updateDetailSub(); }
         function updateDetailSub() {
-            if(!curItem) return;
             let p = curItem.price;
             document.querySelectorAll('#optContainer input:checked').forEach(cb => p += parseInt(cb.dataset.p || 0));
             document.getElementById('dSub').innerText = p * curQty;
@@ -180,26 +179,19 @@
             document.getElementById('cartItemsList').innerHTML = cart.map((i,idx) => `
                 <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee;">
                     <span>${i.name}</span>
-                    <span>$${i.price} <button onclick="removeFromCart(${idx})" style="color:red;border:none;background:none;font-weight:bold;margin-left:10px;">✕</button></span>
+                    <span>$${i.price} <button onclick="cart.splice(${idx},1);updateCartUI();" style="color:red;border:none;background:none;font-weight:bold;margin-left:10px;">✕</button></span>
                 </div>
             `).join('');
         }
 
-        function removeFromCart(idx) { cart.splice(idx,1); updateCartUI(); }
-        function openCart() { if(cart.length > 0) document.getElementById('cartModal').style.display = 'block'; else alert('請先選餐喔！'); }
+        function openCart() { if(cart.length) document.getElementById('cartModal').style.display = 'block'; }
         function closeCart() { document.getElementById('cartModal').style.display = 'none'; }
         function closeDetail() { document.getElementById('detailPage').style.display = 'none'; }
 
         function submitOrder() {
-            if(!cart.length) return;
-            const total = cart.reduce((s,i)=>s+i.price,0);
-            db.ref('orders').push({
-                table:tableNum, items:cart, totalPrice: total, 
-                status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()
-            }).then(() => {
-                alert('訂單已送出，謝謝 Eden！');
-                cart = []; updateCartUI(); closeCart();
-            });
+            const total = cart.reduce((s,i) => s + i.price, 0);
+            db.ref('orders').push({table:tableNum, items:cart, totalPrice: total, status:"待處理", payStatus:"尚未結帳", timestamp:Date.now()})
+              .then(() => { alert('訂單已送出，謝謝 Eden！'); cart = []; updateCartUI(); closeCart(); });
         }
     </script>
 </body>
