@@ -2,8 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 數據分析中心 (數據修復版)</title>
+    <title>BlingOrder | 營運數據分析 (股東冷靜版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,23 +20,19 @@
         .panel-title { font-size: 20px; font-weight: bold; color: var(--primary-pink); margin-bottom: 20px; border-left: 5px solid var(--primary-pink); padding-left: 12px; }
         .daily-item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px dotted #ffccd5; }
         .rank-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #fff5f7; }
-        @media (max-width: 768px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } .content-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
 <div class="header">
     <div class="title">💎 BlingOrder 營運數據分析</div>
-    <p id="sync-time" style="color:#bbb; font-weight: bold; margin-top: 10px;">數據修復同步中...</p>
+    <p id="sync-time" style="color:#bbb; font-weight: bold; margin-top: 10px;">數據精確修正中...</p>
 </div>
-
 <div class="stat-grid">
     <div class="stat-card"><div class="stat-label">📅 本日營收</div><div class="stat-val" id="today-rev">$0</div></div>
     <div class="stat-card"><div class="stat-label">📅 本周累計</div><div class="stat-val" id="week-rev">$0</div></div>
     <div class="stat-card"><div class="stat-label">📅 本月累計</div><div class="stat-val" id="month-rev">$0</div></div>
     <div class="stat-card"><div class="stat-label">📈 歷史總營收</div><div class="stat-val" id="total-rev">$0</div></div>
 </div>
-
 <div class="content-grid">
     <div class="left-col">
         <div class="panel">
@@ -56,7 +51,6 @@
         </div>
     </div>
 </div>
-
 <script>
     const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
     firebase.initializeApp(firebaseConfig);
@@ -77,20 +71,17 @@
         snap.forEach(child => {
             const o = child.val();
             
-            // --- 1. 金額外科修復 ---
+            // --- 強化金額修復：只要超過 2000 就檢查是否異常 (避免 7575 這種情況) ---
             let amt = Number(o.totalPrice || o.total || 0);
-            // 如果偵測到天文數字(大於10萬)，判定為字串拼接Bug，改從 items 加總
-            if (amt > 100000 && o.items) {
-                amt = o.items.reduce((s, i) => s + Number(i.price || 0), 0);
+            if (amt > 2000 && o.items) {
+                // 如果單筆大於兩千，且項目加總跟顯示金額對不起來，就採計項目加總
+                const calculated = o.items.reduce((s, i) => s + Number(i.price || 0), 0);
+                if (calculated !== amt) amt = calculated;
             }
             totalSum += amt;
 
-            // --- 2. 日期修復 ---
             let orderTime = Number(o.timestamp);
-            if (isNaN(orderTime)) {
-                // 如果沒有 timestamp，嘗試用 Firebase key 或今天
-                orderTime = Date.now();
-            }
+            if (isNaN(orderTime)) orderTime = Date.now();
             const orderDateObj = new Date(orderTime);
             const orderDateStr = orderDateObj.toLocaleDateString('zh-TW');
 
@@ -99,11 +90,10 @@
             if (orderTime >= sevenDaysAgoMs) weekSum += amt;
             if (orderDateObj.getMonth() === currentMonth && orderDateObj.getFullYear() === currentYear) monthSum += amt;
 
-            // --- 3. 品項名稱修復 (解決 [object Object]) ---
             if (Array.isArray(o.items)) {
                 o.items.forEach(item => {
                     let name = (typeof item === 'object' && item !== null) ? (item.name || "未知") : String(item);
-                    let pureName = name.split('(')[0]; // 去掉括號選項統一統計
+                    let pureName = name.split('(')[0];
                     itemSales[pureName] = (itemSales[pureName] || 0) + 1;
                 });
             }
@@ -113,7 +103,7 @@
         document.getElementById('week-rev').innerText = `$${weekSum.toLocaleString()}`;
         document.getElementById('month-rev').innerText = `$${monthSum.toLocaleString()}`;
         document.getElementById('total-rev').innerText = `$${totalSum.toLocaleString()}`;
-        document.getElementById('sync-time').innerText = `數據已修復更新：${new Date().toLocaleString()}`;
+        document.getElementById('sync-time').innerText = `修復完成：${new Date().toLocaleString()}`;
         updateVisuals(itemSales, dailyTotals);
     });
 
@@ -123,24 +113,14 @@
         Object.keys(dailyData).sort((a,b)=>new Date(b)-new Date(a)).forEach(date => {
             dailyLog.innerHTML += `<div class="daily-item"><span>${date}</span><span style="color:var(--primary-pink);font-weight:800">$${dailyData[date].toLocaleString()}</span></div>`;
         });
-
         const sortedItems = Object.entries(itemData).sort((a,b)=>b[1]-a[1]);
         const list = document.getElementById('rank-list');
-        list.innerHTML = sortedItems.slice(0, 15).map(([name, qty], i) => 
-            `<div class="rank-item"><span>${i+1}. ${name}</span><span style="color:#aaa">${qty} 份</span></div>`
-        ).join('');
-
+        list.innerHTML = sortedItems.slice(0, 15).map(([name, qty], i) => `<div class="rank-item"><span>${i+1}. ${name}</span><span style="color:#aaa">${qty} 份</span></div>`).join('');
         const ctx = document.getElementById('pieChart').getContext('2d');
         if (pieChart) pieChart.destroy();
         pieChart = new Chart(ctx, {
             type: 'pie',
-            data: {
-                labels: sortedItems.slice(0, 10).map(x => x[0]),
-                datasets: [{
-                    data: sortedItems.slice(0, 10).map(x => x[1]),
-                    backgroundColor: ['#ff85a2', '#ffb3c1', '#ffc2d1', '#ffdee5', '#fb6f92', '#c8e6c9', '#b3e5fc', '#d1c4e9']
-                }]
-            },
+            data: { labels: sortedItems.slice(0, 10).map(x => x[0]), datasets: [{ data: sortedItems.slice(0, 10).map(x => x[1]), backgroundColor: ['#ff85a2', '#ffb3c1', '#ffc2d1', '#ffdee5', '#fb6f92', '#c8e6c9', '#b3e5fc'] }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
