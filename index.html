@@ -3,98 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 布拎布拎喫茶店點餐</title>
+    <title>BlingOrder | 布拎布拎喫茶店</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; }
         body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 100px; }
-        .header { background: white; padding: 20px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
-        .logo { font-size: 24px; font-weight: bold; color: var(--primary-pink); letter-spacing: 2px; }
+        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
+        .logo { font-size: 22px; font-weight: bold; color: var(--primary-pink); letter-spacing: 2px; }
         
-        /* 菜單列表 */
-        .menu-container { padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-        .menu-item { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; }
-        .item-img-box { width: 100%; height: 140px; overflow: hidden; cursor: pointer; }
-        .item-img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
-        .item-img:hover { transform: scale(1.05); }
-        .item-info { padding: 12px; }
-        .item-name { font-weight: bold; font-size: 15px; color: #444; margin-bottom: 5px; }
+        /* 菜單展示 */
+        .menu-container { padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .menu-item { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .item-img-box { width: 100%; height: 130px; cursor: pointer; }
+        .item-img { width: 100%; height: 100%; object-fit: cover; }
+        .item-info { padding: 10px; flex-grow: 1; display: flex; flex-direction: column; }
+        .item-name { font-weight: bold; font-size: 14px; color: #444; height: 40px; overflow: hidden; margin-bottom: 5px; }
         .item-price { color: var(--primary-pink); font-weight: 800; font-size: 16px; }
-        .add-btn { background: var(--primary-pink); color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; margin-top: 10px; cursor: pointer; font-weight: bold; }
+        .add-btn { background: var(--primary-pink); color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; margin-top: auto; cursor: pointer; font-weight: bold; }
 
-        /* 底部購物車條 */
-        .cart-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: white; border-radius: 50px; height: 65px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; box-shadow: 0 10px 30px rgba(255,133,162,0.3); z-index: 1000; border: 2px solid var(--primary-pink); box-sizing: border-box; cursor: pointer; }
-        .submit-trigger { background: var(--primary-pink); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; }
+        /* 底部購物車 */
+        .cart-bar { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: white; border-radius: 50px; height: 65px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; box-shadow: 0 10px 25px rgba(255,133,162,0.3); z-index: 1000; border: 2px solid var(--primary-pink); box-sizing: border-box; }
 
-        /* 通用彈窗樣式 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 90%; max-width: 450px; border-radius: 25px; position: relative; overflow: hidden; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .close-btn { position: absolute; top: 15px; right: 15px; width: 35px; height: 35px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; z-index: 10; border: 2px solid white; }
-
-        /* 詳情彈窗專用 */
+        /* 彈窗樣式 */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 88%; max-width: 400px; border-radius: 20px; position: relative; overflow: hidden; animation: zoomIn 0.2s; }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        /* 左上角打 X */
+        .close-btn { position: absolute; top: 15px; left: 15px; width: 35px; height: 35px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; z-index: 10; border: 2px solid white; line-height: 1; }
+        
         .detail-img { width: 100%; max-height: 300px; object-fit: cover; }
         .detail-body { padding: 20px; }
-        .detail-desc { color: #666; line-height: 1.6; margin: 15px 0; font-size: 14px; }
+        .detail-name { font-size: 20px; font-weight: bold; color: #333; }
+        .detail-price { color: var(--primary-pink); font-size: 22px; font-weight: 800; margin-top: 5px; }
+        .detail-desc { color: #666; line-height: 1.6; margin: 15px 0; font-size: 14px; white-space: pre-wrap; }
 
-        /* 購物車彈窗專用 */
         .cart-body { padding: 25px; }
-        .cart-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; }
-        .cart-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .table-select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ffccd5; margin-bottom: 20px; font-size: 16px; outline: none; }
+        .cart-title { font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; color: var(--primary-pink); }
+        .table-select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid #ffccd5; margin-bottom: 20px; font-size: 16px; }
+        .cart-list { max-height: 220px; overflow-y: auto; margin-bottom: 20px; }
+        .cart-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #fef2f2; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <div class="logo">🌸 BlingOrder | 布拎布拎喫茶店</div>
-</div>
-
-<div class="menu-container" id="menu-list">
-    </div>
+<div class="header"><div class="logo">🌸 BlingOrder | 喫茶店點餐</div></div>
+<div class="menu-container" id="menu-list"></div>
 
 <div class="cart-bar" onclick="openCart()">
     <div style="font-weight:bold;">🛒 (<span id="cart-count">0</span>)</div>
     <div id="cart-total-display" style="color: var(--primary-pink); font-weight: 800; font-size: 18px;">$ 0</div>
-    <button class="submit-trigger">點好了</button>
+    <button style="background: var(--primary-pink); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold;">點好了</button>
 </div>
 
-<div class="modal" id="detail-modal" onclick="closeDetail()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-btn" onclick="closeDetail()">×</div>
-        <img id="detail-img" class="detail-img" src="" alt="">
+<div class="modal" id="detail-modal">
+    <div class="modal-content">
+        <div class="close-btn" onclick="closeDetail()">✕</div>
+        <img id="detail-img" class="detail-img" src="">
         <div class="detail-body">
-            <div id="detail-name" style="font-size: 20px; font-weight: bold;"></div>
-            <div id="detail-price" style="color: var(--primary-pink); font-size: 22px; font-weight: 800; margin-top: 5px;"></div>
+            <div id="detail-name" class="detail-name"></div>
+            <div id="detail-price" class="detail-price"></div>
             <div id="detail-desc" class="detail-desc"></div>
-            <button id="detail-add-btn" class="add-btn" style="font-size: 18px; padding: 12px;">加入購物車</button>
+            <button id="detail-add-btn" class="add-btn" style="padding: 15px; font-size: 18px;">加入購物車</button>
         </div>
     </div>
 </div>
 
-<div class="modal" id="cart-modal" onclick="closeCart()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-btn" onclick="closeCart()">×</div>
+<div class="modal" id="cart-modal">
+    <div class="modal-content">
+        <div class="close-btn" onclick="closeCart()">✕</div>
         <div class="cart-body">
-            <div style="font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 20px; color: var(--primary-pink);">您的點餐清單</div>
-            
+            <div class="cart-title">您的點餐清單</div>
             <select id="table-num" class="table-select">
-                <option value="">選擇桌號</option>
-                <option value="1">1 桌</option><option value="2">2 桌</option>
-                <option value="3">3 桌</option><option value="5">5 桌</option>
-                <option value="6">6 桌</option><option value="7">💎 包廂</option>
-                <option value="8">8 桌</option>
+                <option value="">請選擇桌號</option>
+                <option value="1">1 桌</option><option value="2">2 桌</option><option value="3">3 桌</option>
+                <option value="5">5 桌</option><option value="6">6 桌</option><option value="7">💎 包廂</option><option value="8">8 桌</option>
             </select>
-
-            <div class="cart-list" id="cart-items-list"></div>
-
-            <div style="display:flex; justify-content:space-between; font-size: 1.2em; font-weight: bold; margin-bottom: 20px;">
-                <span>應付總計</span>
-                <span style="color: var(--primary-pink);" id="modal-total">$ 0</span>
+            <div id="cart-items-list" class="cart-list"></div>
+            <div style="display:flex; justify-content:space-between; font-weight: bold; font-size: 1.2em; border-top: 2px solid #fff0f3; padding-top: 15px;">
+                <span>總計</span><span id="modal-total" style="color: var(--primary-pink);">$ 0</span>
             </div>
-
-            <button class="add-btn" style="padding: 15px; font-size: 18px;" onclick="submitOrder()">確認送出訂單</button>
+            <button class="add-btn" style="margin-top: 20px; padding: 15px;" onclick="submitOrder()">確認送出訂單</button>
         </div>
     </div>
 </div>
@@ -105,92 +95,83 @@
     const db = firebase.database();
 
     let cart = [];
-    let fullMenu = {};
+    let menuMap = {};
 
-    // 載入菜單
     db.ref('menu').on('value', snap => {
         const list = document.getElementById('menu-list');
         list.innerHTML = '';
         snap.forEach(child => {
             const item = child.val();
-            fullMenu[item.name] = item;
+            menuMap[item.name] = item;
             const div = document.createElement('div');
             div.className = 'menu-item';
             div.innerHTML = `
                 <div class="item-img-box" onclick="showDetail('${item.name}')">
-                    <img class="item-img" src="${item.image || ''}" alt="${item.name}">
+                    <img class="item-img" src="${item.image || ''}">
                 </div>
                 <div class="item-info">
                     <div class="item-name">${item.name}</div>
                     <div class="item-price">$ ${item.price}</div>
-                    <button class="add-btn" onclick="addToCart('${item.name}', ${item.price})">加入</button>
+                    <button class="add-btn" onclick="addToCart('${item.name}', ${item.price})">加入購物車</button>
                 </div>
             `;
             list.appendChild(div);
         });
     });
 
-    // 詳情彈窗邏輯
     function showDetail(name) {
-        const item = fullMenu[name];
+        const item = menuMap[name];
         document.getElementById('detail-img').src = item.image || '';
         document.getElementById('detail-name').innerText = item.name;
         document.getElementById('detail-price').innerText = `$ ${item.price}`;
-        document.getElementById('detail-desc').innerText = item.description || '這道餐點暫無詳細介紹，但絕對美味！';
-        document.getElementById('detail-add-btn').onclick = () => {
-            addToCart(item.name, item.price);
-            closeDetail();
-        };
+        document.getElementById('detail-desc').innerText = item.description || '暫無詳細介紹';
+        document.getElementById('detail-add-btn').onclick = () => { addToCart(item.name, item.price); closeDetail(); };
         document.getElementById('detail-modal').style.display = 'flex';
     }
     function closeDetail() { document.getElementById('detail-modal').style.display = 'none'; }
+    function openCart() { document.getElementById('cart-modal').style.display = 'flex'; }
+    function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
 
-    // 購物車邏輯
     function addToCart(name, price) {
         cart.push({ name: String(name), price: Number(price) });
-        updateCartUI();
+        updateUI();
     }
 
-    function updateCartUI() {
-        const total = cart.reduce((s, i) => s + Number(i.price || 0), 0);
+    function updateUI() {
+        const total = cart.reduce((s, i) => s + i.price, 0);
         document.getElementById('cart-count').innerText = cart.length;
         document.getElementById('cart-total-display').innerText = `$ ${total}`;
         document.getElementById('modal-total').innerText = `$ ${total}`;
-        
         let html = '';
         cart.forEach((item, idx) => {
             html += `<div class="cart-row">
                 <span>${item.name}</span>
-                <span>$${item.price} <small onclick="removeItem(${idx})" style="color:red; margin-left:8px; cursor:pointer;">[刪除]</small></span>
+                <span>$${item.price} <small onclick="removeItem(${idx})" style="color:red; cursor:pointer; margin-left:8px;">[移除]</small></span>
             </div>`;
         });
-        document.getElementById('cart-items-list').innerHTML = html || '<p style="text-align:center; color:#ccc;">購物車空空如也</p>';
+        document.getElementById('cart-items-list').innerHTML = html || '<p style="text-align:center; color:#ccc;">購物車是空的</p>';
     }
 
-    function removeItem(idx) { cart.splice(idx, 1); updateCartUI(); }
-    function openCart() { document.getElementById('cart-modal').style.display = 'flex'; }
-    function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
+    function removeItem(idx) { cart.splice(idx, 1); updateUI(); }
 
-    // 送出訂單 (終極加固版)
     function submitOrder() {
         const table = document.getElementById('table-num').value;
-        if (!table) { alert('請選擇您的桌號喔！'); return; }
-        if (cart.length === 0) { alert('購物車還沒有東西呢！'); return; }
+        if (!table) { alert('請選擇桌號！'); return; }
+        if (cart.length === 0) { alert('購物車是空的！'); return; }
 
-        const finalTotal = cart.reduce((sum, item) => sum + Number(item.price || 0), 0);
         const orderData = {
             table: String(table),
             items: cart.map(i => ({ name: String(i.name), price: Number(i.price) })),
-            totalPrice: Number(finalTotal),
+            totalPrice: Number(cart.reduce((s, i) => s + i.price, 0)),
             status: "待處理",
             payStatus: "尚未結帳",
             timestamp: Date.now()
         };
 
         db.ref('orders').push(orderData).then(() => {
-            alert('訂單已成功送出！請稍候餐點。');
-            cart = []; updateCartUI(); closeCart();
-        }).catch(() => alert('送單失敗，請洽店員！'));
+            alert('訂單已送出！');
+            cart = []; updateUI(); closeCart();
+        }).catch(() => alert('系統忙碌中，請洽店員！'));
     }
 </script>
 </body>
