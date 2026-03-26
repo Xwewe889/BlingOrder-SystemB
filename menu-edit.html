@@ -1,168 +1,90 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 菜單管理 (正式版功能整合)</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlingOrder | 菜單內容管理</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --primary-pink: #ff85a2; }
-        body { font-family: sans-serif; background: #fff5f7; padding: 20px; }
-        .edit-panel { background: white; padding: 25px; border-radius: 15px; border: 2px solid var(--primary-pink); max-width: 700px; margin: 0 auto 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        h3 { color: var(--primary-pink); margin-top: 0; text-align: center; }
-        
-        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .sold-out-box { background: #fff0f3; padding: 12px; border-radius: 8px; margin: 10px 0; border: 1px solid #ffccd5; display: flex; align-items: center; gap: 8px; }
-        
-        .addon-section { background: #fdfdfd; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin: 15px 0; }
-        .addon-section label { margin-right: 12px; cursor: pointer; display: inline-block; padding: 5px 0; }
-        
-        .btn-save { width: 100%; padding: 15px; background: var(--primary-pink); color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 18px; margin-top: 10px; transition: 0.3s; }
-        .btn-save:hover { background: #ff6b8d; }
-        
-        table { width: 100%; background: white; border-collapse: collapse; margin-top: 20px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
-        th { background: #fff0f3; color: #555; }
-        
-        .action-btns { display: flex; gap: 8px; }
-        .btn-action { padding: 8px 15px; border-radius: 6px; cursor: pointer; border: 1px solid #ddd; font-weight: bold; font-size: 13px; }
-        .btn-edit { background: #e3f2fd; color: #1976d2; border-color: #bbdefb; }
-        .btn-del { background: #fff0f0; color: #d32f2f; border-color: #ffcdd2; }
-        .status-tag { padding: 4px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #db2777; border-bottom: 2px solid #fbcfe8; padding-bottom: 10px; }
+        .form-group { display: grid; grid-template-columns: 1fr 1fr 80px 80px; gap: 10px; margin-bottom: 10px; background: #fff5f7; padding: 10px; border-radius: 8px; border: 1px solid #fce7f3; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .btn-add { background: #db2777; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
+        .btn-save { background: #059669; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-del { background: #dc2626; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        label { font-size: 12px; color: #666; display: block; margin-bottom: 2px; }
+        .header-label { font-weight: bold; color: #db2777; font-size: 14px; }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h2>💎 菜單內容管理</h2>
+        <button class="btn-add" onclick="addNewItem()">＋ 新增品項</button>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 80px 80px 100px; gap: 10px; padding: 0 10px 5px 10px;" class="header-label">
+            <div>品項完整名稱</div>
+            <div>後台簡稱(廚房看)</div>
+            <div>類別代碼</div>
+            <div>金額</div>
+            <div>操作</div>
+        </div>
 
-<div class="edit-panel">
-    <h3>✨ 菜單內容管理 (BlingOrder 正式版)</h3>
-    <input type="hidden" id="edit-id">
-    
-    <input type="text" id="category" placeholder="分類 (例如：月下小食 · 昭和串燒)">
-    <input type="text" id="name" placeholder="餐點名稱 (例如：森之香 · 香菇串)">
-    <input type="number" id="price" placeholder="價格">
-    <input type="text" id="image-path" placeholder="圖片路徑 (例如：images/A00-(1).jpg)">
-    <input type="text" id="staff-note" placeholder="工作人員警語">
-
-    <div class="sold-out-box">
-        <input type="checkbox" id="is-sold-out" style="width:18px; height:18px; cursor:pointer;">
-        <label for="is-sold-out" style="color:#d32f2f; font-weight:bold; cursor:pointer;">🔴 設定為「今日已售完」</label>
+        <div id="menuList"></div>
     </div>
 
-    <div class="addon-section">
-        <strong>客製化選項：</strong><br>
-        <label><input type="checkbox" class="addon" value="冰"> 冰</label>
-        <label><input type="checkbox" class="addon" value="去冰"> 去冰</label>
-        <label><input type="checkbox" class="addon" value="熱"> 熱</label>
-        <label><input type="checkbox" class="addon" value="無糖"> 無糖</label>
-        <label><input type="checkbox" class="addon" value="加糖"> 加糖</label>
-        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
-        <label><input type="checkbox" class="addon" value="五辛素"> 五辛素</label>
-        <label><input type="checkbox" class="addon" value="蛋奶素"> 蛋奶素</label>
-    </div>
-
-    <div style="margin: 15px 0;">
-        <label>餐點介紹：</label><br>
-        <textarea id="description" rows="4" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:15px;" placeholder="請填寫內容介紹..."></textarea>
-    </div>
-
-    <button class="btn-save" id="save-btn" onclick="saveItem()">儲存並發布 ✨</button>
-</div>
-
-<table>
-    <thead>
-        <tr><th>分類</th><th>圖片</th><th>名稱/價格</th><th>狀態</th><th>操作</th></tr>
-    </thead>
-    <tbody id="menu-tbody"></tbody>
-</table>
-
-<script>
-    // 這裡已修正為你截圖中的 blingorder 正式資料庫
-    const firebaseConfig = {
-        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
-        authDomain: "blingorder.firebaseapp.com",
-        projectId: "blingorder",
-        databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
-        appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    function saveItem() {
-        const id = document.getElementById('edit-id').value || Date.now().toString();
-        const addons = [];
-        document.querySelectorAll('.addon:checked').forEach(cb => addons.push(cb.value));
-
-        const data = {
-            category: document.getElementById('category').value || "未分類",
-            name: document.getElementById('name').value,
-            price: document.getElementById('price').value,
-            image: document.getElementById('image-path').value,
-            staffNote: document.getElementById('staff-note').value || "",
-            description: document.getElementById('description').value || "",
-            addons: addons,
-            isSoldOut: document.getElementById('is-sold-out').checked
+    <script>
+        // 請更換為你的 Firebase 配置
+        const firebaseConfig = {
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com/"
         };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        if(!data.name || !data.price) return alert("名稱與價格必填！");
-
-        db.ref('menu/' + id).set(data).then(() => {
-            alert("已成功儲存到正式資料庫！");
-            clearForm();
-        });
-    }
-
-    db.ref('menu').on('value', snap => {
-        const tbody = document.getElementById('menu-tbody');
-        tbody.innerHTML = "";
-        snap.forEach(child => {
-            const i = child.val();
-            const statusColor = i.isSoldOut ? 'background:#ffebee; color:#d32f2f;' : 'background:#e8f5e9; color:#2e7d32;';
-            tbody.innerHTML += `
-                <tr>
-                    <td>${i.category}</td>
-                    <td><img src="${i.image}" width="50" height="50" style="object-fit:cover; border-radius:5px;"></td>
-                    <td><b>${i.name}</b><br><small>$${i.price}</small></td>
-                    <td><span class="status-tag" style="${statusColor}">${i.isSoldOut ? '已售完' : '供餐中'}</span></td>
-                    <td>
-                        <div class="action-btns">
-                            <button class="btn-action btn-edit" onclick="startEdit('${child.key}')">修改</button>
-                            <button class="btn-action btn-del" onclick="deleteItem('${child.key}')">刪除</button>
+        function loadMenu() {
+            db.ref('menu').on('value', (snapshot) => {
+                const menuList = document.getElementById('menuList');
+                menuList.innerHTML = '';
+                snapshot.forEach((child) => {
+                    const item = child.val();
+                    const id = child.key;
+                    menuList.innerHTML += `
+                        <div class="form-group">
+                            <input type="text" id="name-${id}" value="${item.name || ''}" placeholder="例:昭和朝霧．生乳捲">
+                            <input type="text" id="short-${id}" value="${item.short_name || ''}" placeholder="例:生乳捲">
+                            <input type="text" id="cat-${id}" value="${item.category || 'A'}" placeholder="A/B/C">
+                            <input type="number" id="price-${id}" value="${item.price || 0}">
+                            <div>
+                                <button class="btn-save" onclick="saveItem('${id}')">儲存</button>
+                                <button class="btn-del" onclick="deleteItem('${id}')">刪除</button>
+                            </div>
                         </div>
-                    </td>
-                </tr>`;
-        });
-    });
-
-    function startEdit(id) {
-        db.ref('menu/' + id).once('value', snap => {
-            const i = snap.val();
-            document.getElementById('edit-id').value = id;
-            document.getElementById('category').value = i.category || '';
-            document.getElementById('name').value = i.name || '';
-            document.getElementById('price').value = i.price || '';
-            document.getElementById('image-path').value = i.image || '';
-            document.getElementById('staff-note').value = i.staffNote || '';
-            document.getElementById('description').value = i.description || '';
-            document.getElementById('is-sold-out').checked = i.isSoldOut || false;
-            document.querySelectorAll('.addon').forEach(cb => {
-                cb.checked = (i.addons || []).includes(cb.value);
+                    `;
+                });
             });
-            document.getElementById('save-btn').innerText = "更新資料 ✨";
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    }
+        }
 
-    function deleteItem(id) {
-        if(confirm("確定刪除？")) db.ref('menu/' + id).remove();
-    }
+        function addNewItem() {
+            const newRef = db.ref('menu').push();
+            newRef.set({ name: "新餐點", short_name: "簡稱", category: "A", price: 0 });
+        }
 
-    function clearForm() {
-        document.getElementById('edit-id').value = "";
-        document.getElementById('save-btn').innerText = "儲存並發布 ✨";
-        // 這裡可以手動清空其他欄位，或 location.reload();
-        location.reload();
-    }
-</script>
+        function saveItem(id) {
+            const name = document.getElementById(`name-${id}`).value;
+            const short_name = document.getElementById(`short-${id}`).value;
+            const category = document.getElementById(`cat-${id}`).value.toUpperCase();
+            const price = parseInt(document.getElementById(`price-${id}`).value);
+            db.ref('menu/' + id).update({ name, short_name, category, price })
+              .then(() => alert('儲存成功！'));
+        }
+
+        function deleteItem(id) {
+            if(confirm('確定要刪除嗎？')) db.ref('menu/' + id).remove();
+        }
+
+        loadMenu();
+    </script>
 </body>
 </html>

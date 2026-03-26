@@ -1,140 +1,108 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 雙控管理後台</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
+    <title>BlingOrder | 接單看板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --primary-pink: #ff85a2; --bg: #fdfdfd; }
-        body { font-family: "PingFang TC", sans-serif; background: var(--bg); margin: 0; padding: 0; }
-        
-        /* 啟動門簾 */
-        #voice-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary-pink); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .start-btn { padding: 30px 60px; font-size: 40px; font-weight: 900; background: white; color: var(--primary-pink); border: none; border-radius: 50px; cursor: pointer; }
-
-        .admin-header { background: white; padding: 20px; border-bottom: 3px solid var(--primary-pink); display: flex; justify-content: space-between; align-items: center; }
-        .rev-info { text-align: right; background: #333; color: white; padding: 10px 20px; border-radius: 12px; }
-
-        .order-list-container { padding: 15px; }
-        .order-row { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); border: 2px solid #eee; display: flex; align-items: center; }
-        
-        .table-box { min-width: 140px; text-align: center; border-right: 3px solid #eee; margin-right: 25px; }
-        .table-text { font-size: 36px; font-weight: 900; color: #333; }
-        .table-text.booth { color: var(--primary-pink); }
-        
-        .items-box { flex-grow: 1; }
-        .item-detail { font-size: 32px; font-weight: 800; color: #000; line-height: 1.4; }
-        
-        .action-box { min-width: 250px; text-align: right; margin-left: 20px; display: flex; flex-direction: column; gap: 10px; }
-        
-        /* 按鈕樣式 */
-        .btn-base { border: none; padding: 15px; border-radius: 12px; font-size: 22px; font-weight: 900; cursor: pointer; transition: 0.2s; }
-        
-        .btn-pay { background: #ffc107; color: #333; box-shadow: 0 4px 0 #d39e00; }
-        .btn-pay.done { background: #e0e0e0; color: #999; box-shadow: none; cursor: default; transform: none; }
-        
-        .btn-ship { background: #4caf50; color: white; box-shadow: 0 4px 0 #2e7d32; }
-        .btn-ship:active { transform: translateY(4px); box-shadow: 0 1px 0 #2e7d32; }
-
-        .price-text { font-size: 24px; font-weight: bold; color: var(--primary-pink); margin-bottom: 5px; }
-        .report-link { display: block; text-align: center; padding: 20px; color: #888; text-decoration: none; font-weight: bold; }
+        body { font-family: 'Microsoft JhengHei', sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .order-card { background: #ffffff; color: #333; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; align-items: flex-start; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .table-no { font-size: 40px; font-weight: bold; min-width: 120px; color: #db2777; border-right: 2px solid #eee; margin-right: 20px; }
+        .order-content { flex-grow: 1; font-size: 26px; font-weight: 700; line-height: 1.4; color: #000; }
+        .item-row { margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 5px; }
+        .qty-tag { color: #db2777; font-size: 30px; margin-left: 10px; }
+        .cat-tag { font-size: 14px; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; color: #666; margin-right: 8px; vertical-align: middle; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; min-width: 180px; margin-left: 20px; }
+        button { font-size: 22px; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-pay { background: #fbbf24; color: #000; }
+        .btn-pay.done { background: #d1d5db; color: #999; cursor: not-allowed; }
+        .btn-ship { background: #10b981; color: white; }
+        /* 門簾樣式 */
+        #curtain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: flex; justify-content: center; align-items: center; }
+        .curtain-btn { padding: 40px 80px; font-size: 40px; background: #db2777; color: white; border-radius: 20px; border: none; cursor: pointer; }
     </style>
 </head>
 <body>
+    <div id="curtain"><button class="curtain-btn" onclick="startSystem()">點擊啟動接單系統</button></div>
+    
+    <div class="header">
+        <h1 style="color:#fbcfe8">💎 BlingOrder 接單看板</h1>
+        <div id="totalSales" style="font-size: 30px; background: #333; padding: 10px 20px; border-radius: 10px;">今日：$0</div>
+    </div>
 
-<div id="voice-overlay">
-    <button class="start-btn" onclick="initVoice()">啟動系統</button>
-</div>
+    <div id="orderBoard"></div>
 
-<div class="admin-header">
-    <h1 style="margin:0; font-size:24px; color:var(--primary-pink);">💎 BlingOrder 接單看板</h1>
-    <div class="rev-info"><div id="rev-val" style="font-size:24px; font-weight:bold;">$0</div></div>
-</div>
+    <script>
+        const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let menuData = {};
 
-<div class="order-list-container" id="list-box"></div>
+        // 先讀取菜單資訊(包含簡稱與類別)
+        db.ref('menu').on('value', (snapshot) => { menuData = snapshot.val() || {}; });
 
-<a href="report.html" class="report-link">查看今日報表 ⮕</a>
-
-<script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
-        authDomain: "blingorder.firebaseapp.com",
-        projectId: "blingorder",
-        databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
-        appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let isSystemReady = false;
-    let knownOrderIds = null;
-    const todayStr = new Date().toLocaleDateString('zh-TW');
-
-    function initVoice() {
-        isSystemReady = true;
-        document.getElementById('voice-overlay').style.display = 'none';
-        window.speechSynthesis.speak(new SpeechSynthesisUtterance("系統就緒"));
-    }
-
-    db.ref('orders').on('value', snap => {
-        const listBox = document.getElementById('list-box');
-        listBox.innerHTML = "";
-        let todaySum = 0;
-        let shouldSpeak = false;
-        let currentIds = new Set();
-
-        snap.forEach(child => {
-            const o = child.val();
-            const id = child.key;
-            const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
-
-            if (orderDate === todayStr) {
-                todaySum += parseInt(o.total || 0);
-
-                // 如果還沒出餐，就顯示在畫面上
-                if (o.status !== "已出餐") {
-                    currentIds.add(id);
-                    if (knownOrderIds !== null && !knownOrderIds.has(id)) shouldSpeak = true;
-
-                    const isB = (o.table == "7" || o.table == "包廂");
-                    const isPaid = (o.payStatus === "已結帳");
-
-                    listBox.innerHTML = `
-                        <div class="order-row">
-                            <div class="table-box"><div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : o.table + '桌'}</div></div>
-                            <div class="items-box"><div class="item-detail">${(o.items || []).join('、')}</div></div>
-                            <div class="action-box">
-                                <div class="price-text">$${o.total}</div>
-                                <button class="btn-base btn-pay ${isPaid ? 'done' : ''}" onclick="${isPaid ? '' : `payOrder('${id}')`}">
-                                    ${isPaid ? '✓ 已結帳' : '尚未結帳'}
-                                </button>
-                                <button class="btn-base btn-ship" onclick="shipOrder('${id}')">已出餐</button>
-                            </div>
-                        </div>` + listBox.innerHTML;
-                }
-            }
-        });
-
-        if (knownOrderIds === null) { knownOrderIds = currentIds; } 
-        else {
-            if (shouldSpeak && isSystemReady) {
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance("您有新訂單"));
-            }
-            knownOrderIds = currentIds;
+        function startSystem() {
+            document.getElementById('curtain').style.display = 'none';
+            loadOrders();
         }
-        document.getElementById('rev-val').innerText = "$" + todaySum.toLocaleString();
-    });
 
-    function payOrder(id) {
-        db.ref('orders/' + id).update({ payStatus: "已結帳" });
-    }
+        function loadOrders() {
+            db.ref('orders').orderByChild('status').equalTo('待處理').on('value', (snapshot) => {
+                const board = document.getElementById('orderBoard');
+                board.innerHTML = '';
+                let dailyTotal = 0;
 
-    function shipOrder(id) {
-        db.ref('orders/' + id).update({ status: "已出餐" });
-    }
-</script>
+                snapshot.forEach((orderSnap) => {
+                    const order = orderSnap.val();
+                    const orderId = orderSnap.key;
+                    
+                    // 1. 處理品項合併與分類排序
+                    let itemsMap = {};
+                    order.items.forEach(item => {
+                        // 優先使用簡稱，沒有就用原名
+                        const displayName = menuData[item.id]?.short_name || item.name;
+                        const category = menuData[item.id]?.category || 'Z'; // 未分類排最後
+                        
+                        if (!itemsMap[item.id]) {
+                            itemsMap[item.id] = { name: displayName, qty: 0, cat: category };
+                        }
+                        itemsMap[item.id].qty++;
+                    });
+
+                    // 轉為陣列並按類別 A, B, C... 排序
+                    const sortedItems = Object.values(itemsMap).sort((a, b) => a.cat.localeCompare(b.cat));
+
+                    // 2. 建立訂單卡片 HTML
+                    let itemsHtml = sortedItems.map(i => `
+                        <div class="item-row">
+                            <span class="cat-tag">${i.cat}</span>${i.name} <span class="qty-tag">× ${i.qty}</span>
+                        </div>
+                    `).join('');
+
+                    board.innerHTML += `
+                        <div class="order-card">
+                            <div class="table-no">${order.table === "7" ? "💎包廂" : order.table + "桌"}</div>
+                            <div class="order-content">${itemsHtml}</div>
+                            <div class="btn-group">
+                                <button class="btn-pay ${order.payStatus === '已結帳' ? 'done' : ''}" 
+                                        onclick="markPaid('${orderId}')" ${order.payStatus === '已結帳' ? 'disabled' : ''}>
+                                    ${order.payStatus === '已結帳' ? '已結帳' : '尚未結帳'}
+                                </button>
+                                <button class="btn-ship" onclick="markShipped('${orderId}')">已出餐</button>
+                            </div>
+                        </div>
+                    `;
+                    dailyTotal += order.totalPrice;
+                });
+                document.getElementById('totalSales').innerText = `今日：$${dailyTotal}`;
+            });
+        }
+
+        function markPaid(id) { db.ref('orders/' + id).update({ payStatus: '已結帳' }); }
+        function markShipped(id) { db.ref('orders/' + id).update({ status: '已完成' }); }
+    </script>
 </body>
 </html>
