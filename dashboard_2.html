@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 數據分析 V2</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; margin: 0; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .val { font-size: 24px; font-weight: bold; color: var(--p-purple); margin-top: 5px; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .flex-box { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; }
+        @media (max-width: 768px) { .flex-box { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <h2 style="color:var(--p-purple); text-align:center;">💎 BlingOrder 營運分析中心 (V2)</h2>
+    
+    <div class="grid">
+        <div class="card">本日實收營收<div class="val" id="t-real">$ 0</div></div>
+        <div class="card">本日招待總額<div class="val" id="t-free">$ 0</div></div>
+        <div class="card">本月累計實收<div class="val" id="m-real">$ 0</div></div>
+        <div class="card">歷史總實收<div class="val" id="all-real">$ 0</div></div>
+    </div>
+
+    <div class="flex-box">
+        <div class="chart-container">
+            <h3 style="color:#666;">🍎 熱銷品項排行</h3>
+            <canvas id="rankChart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3 style="color:#666;">🗓️ 每日營收日誌 (V2)</h3>
+            <div id="daily-logs"></div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let myChart;
+
+        db.ref('orders_v2').on('value', snap => {
+            const data = snap.val() || {};
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('zh-TW');
+
+            let tReal = 0, tFree = 0, mReal = 0, allReal = 0;
+            let itemRank = {}, dailyLog = {};
+
+            Object.values(data).forEach(o => {
+                const amount = parseInt(o.totalAmount || 0);
+                const d = new Date(o.timestamp);
+                const dStr = d.toLocaleDateString('zh-TW');
+                const isFree = o.payStatus === "免單";
+
+                if(!isFree) {
+                    allReal += amount;
+                    if(dStr === todayStr) tReal += amount;
+                    if(d.getMonth() === now.getMonth()) mReal += amount;
+                    dailyLog[dStr] = (dailyLog[dStr] || 0) + amount;
+                } else {
+                    if(dStr === todayStr) tFree += amount;
+                }
+
+                if(o.items) {
+                    o.items.forEach(i => {
+                        itemRank[i.name] = (itemRank[i.name] || 0) + 1;
+                    });
+                }
+            });
+
+            document.getElementById('t-real').innerText = '$ ' + tReal.toLocaleString();
+            document.getElementById('t-free').innerText = '$ ' + tFree.toLocaleString();
+            document.getElementById('m-real').innerText = '$ ' + mReal.toLocaleString();
+            document.getElementById('all-real').innerText = '$ ' + allReal.toLocaleString();
+
+            // 更新日誌
+            const logEl = document.getElementById('daily-logs');
+            logEl.innerHTML = Object.entries(dailyLog).sort((a,b)=>new Date(b[0])-new Date(a[0])).map(l => 
+                `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
+                    <span>${l[0]}</span><b>$ ${l[1].toLocaleString()}</b>
+                </div>`
+            ).join('');
+
+            // 更新圖表
+            const sortedItems = Object.entries(itemRank).sort((a,b)=>b[1]-a[1]).slice(0,8);
+            const ctx = document.getElementById('rankChart').getContext('2d');
+            if(myChart) myChart.destroy();
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedItems.map(i=>i[0]),
+                    datasets: [{ label: '銷售數量', data: sortedItems.map(i=>i[1]), backgroundColor: '#9b87f5' }]
+                },
+                options: { indexAxis: 'y' }
+            });
+        });
+    </script>
+</body>
+</html>

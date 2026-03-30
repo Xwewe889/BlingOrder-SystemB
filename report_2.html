@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 營收報表 V2</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --p-purple: #9b87f5; --bg-purple: #f8f7ff; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 5px solid var(--p-purple); }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #f0ecff; color: #6a5acd; padding: 12px; text-align: left; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        .sum-group { display: flex; gap: 15px; margin-bottom: 20px; }
+        .sum-box { background: white; padding: 15px; border-radius: 10px; flex: 1; border: 1px solid #e0d7ff; }
+        .val { font-size: 20px; font-weight: bold; color: var(--p-purple); }
+        .btn-free { background: var(--p-purple); color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+        .status-tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .tag-pay { background: #e8f5e9; color: #2e7d32; }
+        .tag-free { background: #f3e5f5; color: #7b1fa2; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header-flex">
+            <h2 style="color:var(--p-purple); margin:0;">🗓️ 營收報表明細 (V2 碼災重製版)</h2>
+            <div style="font-size:12px; color:#999;">數據啟始日：2026/03/30</div>
+        </div>
+
+        <div class="sum-group">
+            <div class="sum-box">今日實收營收<div class="val" id="day-real">$ 0</div></div>
+            <div class="sum-box">今日招待總額<div class="val" id="day-free">$ 0</div></div>
+            <div class="sum-box">總訂單數<div class="val" id="order-count">0</div></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>時間</th>
+                    <th>桌號</th>
+                    <th>金額</th>
+                    <th>狀態</th>
+                    <th>品項</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="report-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        db.ref('orders_v2').on('value', snap => {
+            const data = snap.val() || {};
+            const tbody = document.getElementById('report-body');
+            tbody.innerHTML = '';
+            let tReal = 0, tFree = 0, count = 0;
+            const today = new Date().toLocaleDateString('zh-TW');
+
+            Object.keys(data).reverse().forEach(key => {
+                const o = data[key];
+                const d = new Date(o.timestamp);
+                const dStr = d.toLocaleDateString('zh-TW');
+                const isFree = o.payStatus === "免單";
+                const amount = parseInt(o.totalAmount || 0);
+
+                if(dStr === today) {
+                    if(isFree) tFree += amount; else tReal += amount;
+                    count++;
+                }
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}</td>
+                        <td>${o.tableId}</td>
+                        <td>$${amount}</td>
+                        <td><span class="status-tag ${isFree?'tag-free':'tag-pay'}">${o.payStatus}</span></td>
+                        <td style="font-size:12px; color:#666;">${o.items.map(i=>i.name).join('、')}</td>
+                        <td>
+                            ${!isFree ? `<button class="btn-free" onclick="setFree('${key}')">改為免單</button>` : ''}
+                            <button style="background:#ff5f6d; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;" onclick="delOrder('${key}')">刪除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('day-real').innerText = '$ ' + tReal.toLocaleString();
+            document.getElementById('day-free').innerText = '$ ' + tFree.toLocaleString();
+            document.getElementById('order-count').innerText = count;
+        });
+
+        function setFree(key) { if(confirm('確定要將此單改為「免單招待」嗎？營收將會扣除此筆。')) db.ref('orders_v2/'+key).update({payStatus:'免單'}); }
+        function delOrder(key) { if(confirm('確定要永久刪除此訂單嗎？')) db.ref('orders_v2/'+key).remove(); }
+    </script>
+</body>
+</html>
