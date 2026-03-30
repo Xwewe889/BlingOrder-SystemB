@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 3.營收報表</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f8f7ff; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .sum-box { background: #f0ecff; padding: 15px; border-radius: 10px; display: inline-block; margin-right: 15px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🗓️ 3.今日營收明細 (V2)</h2>
+        <div class="sum-box">實收營收：<b id="real" style="color:#9b87f5;">$ 0</b></div>
+        <div class="sum-box">招待總額：<b id="free" style="color:#ff85a2;">$ 0</b></div>
+        <table>
+            <thead><tr><th>時間</th><th>桌號</th><th>金額</th><th>狀態</th><th>品項</th><th>操作</th></tr></thead>
+            <tbody id="body"></tbody>
+        </table>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        db.ref('orders_v2').on('value', snap => {
+            const tbody = document.getElementById('body'); tbody.innerHTML = '';
+            let r=0, f=0; const today = new Date().toLocaleDateString('zh-TW');
+            Object.keys(snap.val()||{}).reverse().forEach(k => {
+                const o = snap.val()[k]; const d = new Date(o.timestamp);
+                if(d.toLocaleDateString('zh-TW') === today) { if(o.payStatus==='免單') f+=o.totalAmount; else r+=o.totalAmount; }
+                tbody.innerHTML += `<tr><td>${d.getHours()}:${d.getMinutes()}</td><td>${o.tableId}</td><td>$${o.totalAmount}</td><td>${o.payStatus}</td><td>${o.items.map(i=>i.name).join(',')}</td>
+                    <td><button onclick="db.ref('orders_v2/${k}').update({payStatus:'免單'})">改免單</button></td></tr>`;
+            });
+            document.getElementById('real').innerText = '$ ' + r; document.getElementById('free').innerText = '$ ' + f;
+        });
+    </script>
+</body>
+</html>

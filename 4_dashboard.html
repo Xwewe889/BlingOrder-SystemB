@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 4.分析儀表板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f5f3ff; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .val { font-size: 24px; font-weight: bold; color: #9b87f5; }
+        .chart-box { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; height: 350px; }
+    </style>
+</head>
+<body>
+    <h2 style="color:#9b87f5; text-align:center;">💎 4.數據決策中心 (V2)</h2>
+    <div class="grid">
+        <div class="card">今日實收<div class="val" id="t-real">$ 0</div></div>
+        <div class="card">昨日實收<div class="val" id="y-real">$ 0</div></div>
+        <div class="card">本月累計<div class="val" id="m-real">$ 0</div></div>
+        <div class="card">歷史總計<div class="val" id="all-real">$ 0</div></div>
+    </div>
+    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        let trendChart;
+        db.ref('orders_v2').on('value', snap => {
+            const data = snap.val()||{}; const now = new Date(); const today = now.toLocaleDateString('zh-TW');
+            let tr=0, yr=0, mr=0, ar=0; let daily={};
+            Object.values(data).forEach(o => {
+                const d = new Date(o.timestamp); const dStr = d.toLocaleDateString('zh-TW');
+                if(o.payStatus!=='免單'){
+                    ar+=o.totalAmount; if(dStr===today) tr+=o.totalAmount;
+                    if(d.getMonth()===now.getMonth()) mr+=o.totalAmount;
+                    daily[dStr] = (daily[dStr]||0) + o.totalAmount;
+                }
+            });
+            document.getElementById('t-real').innerText='$'+tr; document.getElementById('all-real').innerText='$'+ar;
+            // 圖表邏輯 (簡化顯示最近7天)
+            const labels = Object.keys(daily).sort().slice(-7);
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if(trendChart) trendChart.destroy();
+            trendChart = new Chart(ctx, { type:'line', data:{ labels, datasets:[{label:'每日營業額', data:labels.map(l=>daily[l]), borderColor:'#9b87f5'}] }});
+        });
+    </script>
+</body>
+</html>

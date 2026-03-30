@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 2.菜單管理</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f5f3ff; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 20px; }
+        .form-group { background: #fff5f7; padding: 20px; border-radius: 15px; border: 2px solid #9b87f5; margin-bottom: 20px; }
+        .input-row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 10px; margin-bottom: 10px; }
+        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .item-row { display: grid; grid-template-columns: 60px 1.5fr 1fr 1fr 2fr 200px; gap: 10px; padding: 15px; border-bottom: 1px solid #eee; align-items: center; }
+        .btn-main { background: #9b87f5; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #7b6ac5; }
+        .btn-op { border: none; padding: 8px 12px; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; margin-right: 5px; box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 style="color:#9b87f5;">🟣 2.菜單管理 (V2)</h2>
+        <div class="form-group">
+            <h3 id="mode-text">新增餐點</h3>
+            <div class="input-row"><input type="text" id="name" placeholder="名稱"><input type="number" id="price" placeholder="價格"><input type="text" id="cat" placeholder="類別"><input type="text" id="img" placeholder="圖片路徑"></div>
+            <textarea id="note" placeholder="介紹..."></textarea><input type="hidden" id="edit-id">
+            <button id="sub-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單</button>
+        </div>
+        <div id="list-content"></div>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database(); let allM = {};
+        function handleSubmit(){
+            const id=document.getElementById('edit-id').value; const data={ name:document.getElementById('name').value, price:parseInt(document.getElementById('price').value), category:document.getElementById('cat').value, image:document.getElementById('img').value, note:document.getElementById('note').value, isSoldOut:id?allM[id].isSoldOut:false };
+            if(id) db.ref('menu_v2/'+id).update(data).then(reset); else db.ref('menu_v2').push(data).then(reset);
+        }
+        function reset(){ document.querySelectorAll('input,textarea').forEach(i=>i.value=''); document.getElementById('edit-id').value=''; document.getElementById('mode-text').innerText="新增餐點"; }
+        db.ref('menu_v2').on('value', snap => {
+            const list = document.getElementById('list-content'); list.innerHTML = ''; allM = snap.val() || {};
+            Object.keys(allM).forEach(id => { const i = allM[id]; list.innerHTML += `<div class="item-row">
+                <img src="${i.image}" style="width:45px; height:45px; object-fit:cover; border-radius:5px;"><div style="font-weight:bold;">${i.name}</div><div>${i.category}</div><div>$${i.price}</div><div style="font-size:12px; color:#888;">${i.note||''}</div>
+                <div><button class="btn-op" style="background:#4CAF50;" onclick="startEdit('${id}')">改</button><button class="btn-op" style="background:#ff5f6d;" onclick="db.ref('menu_v2/${id}').remove()">刪</button>
+                <button class="btn-op" style="background:#9b87f5;" onclick="db.ref('menu_v2/${id}').update({isSoldOut:!i.isSoldOut})">${i.isSoldOut?'🔴售完':'🟢在售'}</button></div></div>`; });
+        });
+        function startEdit(id){ const i=allM[id]; document.getElementById('edit-id').value=id; document.getElementById('name').value=i.name; document.getElementById('price').value=i.price; document.getElementById('cat').value=i.category; document.getElementById('img').value=i.image; document.getElementById('note').value=i.note; document.getElementById('mode-text').innerText="修改："+i.name; }
+    </script>
+</body>
+</html>

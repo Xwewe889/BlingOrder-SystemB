@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 1.接單看板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
+        .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 10px solid #ff85a2; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .table-no { font-size: 36px; font-weight: bold; color: #ff85a2; }
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+        .btn-pay { background: #4CAF50; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #3e8e41; }
+        .btn-free { background: #9b87f5; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 10px; box-shadow: 0 4px 0 #7b6ac5; }
+    </style>
+</head>
+<body>
+    <h2 style="color:#ff85a2;">🌸 1.接單中心 (V2)</h2>
+    <div id="order-list"></div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        const catW = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
+        db.ref('orders_v2').on('value', snap => {
+            const list = document.getElementById('order-list'); list.innerHTML = '';
+            snap.forEach(child => {
+                const o = child.val(); if(o.payStatus === "尚未結帳") {
+                    const sorted = [...(o.items||[])].sort((a,b)=>(catW[a.category]||99)-(catW[b.category]||99));
+                    list.innerHTML += `<div class="order-card"><div class="table-no">桌號：${o.tableId}</div>
+                        <div>${sorted.map(i=>`<div class="item-row"><span>[${i.category}] <b>${i.name}</b></span><span>x 1</span></div>`).join('')}</div>
+                        <div style="text-align:right; margin-top:15px;"><button class="btn-pay" onclick="updatePay('${child.key}','已結帳')">結帳 $${o.totalAmount}</button>
+                        <button class="btn-free" onclick="updatePay('${child.key}','免單')">✨ 免單</button></div></div>`;
+                }
+            });
+        });
+        function updatePay(k, s) { db.ref('orders_v2/'+k).update({ payStatus: s }); }
+    </script>
+</body>
+</html>

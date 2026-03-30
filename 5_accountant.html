@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 5.歷史補錄</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f8f7ff; padding: 20px; }
+        .box { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; background: #9b87f5; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2 style="color:#9b87f5; text-align:center;">📜 5.歷史數據補錄 (會計專用)</h2>
+        <label>日期</label><input type="date" id="date">
+        <label>總金額</label><input type="number" id="amt" placeholder="截圖總額">
+        <label>品項簡述</label><input type="text" id="note" placeholder="如：3飲品2炸物">
+        <button onclick="save()">確認補錄進 V2 資料庫</button>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        function save(){
+            const d=document.getElementById('date').value; const a=parseInt(document.getElementById('amt').value); const n=document.getElementById('note').value;
+            if(!d || !a) return alert('必填！');
+            db.ref('orders_v2').push({ tableId:"歷史", totalAmount:a, timestamp:new Date(d).getTime(), payStatus:"已結帳", items:[{name:n||"歷史補錄", price:a, category:"其他"}], isHistory:true }).then(()=>alert('補錄成功！'));
+        }
+    </script>
+</body>
+</html>

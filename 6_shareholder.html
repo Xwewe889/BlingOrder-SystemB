@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 6.股東月報</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f5f3ff; padding: 30px; }
+        .report { max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; text-align: center; }
+        .num { font-size: 28px; font-weight: bold; color: #9b87f5; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="report">
+        <h2 style="color:#9b87f5; border-bottom: 2px solid #eee; padding-bottom: 20px;">📊 6.股東月結經營報告 (V2)</h2>
+        <div id="m-text" style="font-size:18px; color:#666;"></div>
+        <div class="kpi">
+            <div style="background:#f8f7ff; padding:20px; border-radius:15px;">當月總營收<div class="num" id="rev">$ 0</div></div>
+            <div style="background:#fdf2f8; padding:20px; border-radius:15px;">免單招待<div class="num" id="free" style="color:#ff85a2;">$ 0</div></div>
+            <div style="background:#f0fdf4; padding:20px; border-radius:15px;">總訂單數<div class="num" id="cnt" style="color:#4CAF50;">0</div></div>
+        </div>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        const now = new Date(); document.getElementById('m-text').innerText = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 經營結算`;
+        db.ref('orders_v2').once('value', snap => {
+            let r=0, f=0, c=0;
+            Object.values(snap.val()||{}).forEach(o => {
+                const d = new Date(o.timestamp);
+                if(d.getMonth() === now.getMonth()) {
+                    c++; if(o.payStatus==='免單') f+=o.totalAmount; else r+=o.totalAmount;
+                }
+            });
+            document.getElementById('rev').innerText='$'+r; document.getElementById('free').innerText='$'+f; document.getElementById('cnt').innerText=c;
+        });
+    </script>
+</body>
+</html>

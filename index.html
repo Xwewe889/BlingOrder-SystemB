@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BlingOrder | 布拎布拎喫茶店</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; --p-purple: #9b87f5; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 120px; -webkit-tap-highlight-color: transparent; }
+        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 2px solid var(--primary-pink); }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); }
+        .category-title { margin: 25px 15px 12px; font-size: 18px; font-weight: bold; color: var(--p-purple); display: flex; align-items: center; }
+        .category-title::before { content: "✿"; margin-right: 8px; }
+        .item-card { background: white; border-radius: 18px; padding: 12px; margin: 0 12px 15px; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(255,133,162,0.1); position: relative; }
+        .item-img { width: 85px; height: 85px; border-radius: 14px; object-fit: cover; margin-right: 15px; background: #eee; }
+        .item-info { flex: 1; }
+        .price { color: var(--primary-pink); font-weight: bold; font-size: 18px; }
+        .sold-out { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        .sold-out-tag { position: absolute; right: 15px; top: 15px; background: #666; color: white; font-size: 10px; padding: 3px 8px; border-radius: 5px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; backdrop-filter: blur(3px); }
+        .modal-content { background:white; width:88%; max-width:350px; border-radius:25px; overflow:hidden; position:relative; }
+        .modal-img { width: 100%; height: 220px; object-fit: cover; }
+        .cart-bar { position:fixed; bottom:30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--primary-pink); color:white; padding: 18px 22px; border-radius: 50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(255,133,162,0.5); z-index:900; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+    <div class="header"><div class="logo">布拎布拎喫茶店</div></div>
+    <div id="menu-list"></div>
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
+            <img id="m-img" class="modal-img" src="">
+            <div style="padding:20px;">
+                <h2 id="m-name" style="margin:0;"></h2>
+                <p id="m-note" style="color:#888; font-size:14px; margin:10px 0;"></p>
+                <div id="m-price" style="font-size:24px; color:var(--primary-pink); font-weight:bold;"></div>
+                <button onclick="addFromModal()" style="width:100%; background:var(--primary-pink); color:white; border:none; padding:15px; border-radius:15px; font-weight:bold; margin-top:15px;">加入購物車</button>
+                <button onclick="closeModal()" style="width:100%; background:none; border:none; color:#ccc; margin-top:10px;">關閉</button>
+            </div>
+        </div>
+    </div>
+    <div class="cart-bar" onclick="submitOrder()">
+        <span id="cart-info">🛒 尚未挑選餐點</span>
+        <span>送出訂單 ></span>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        let cart = []; let tempItem = null;
+        db.ref('menu_v2').on('value', snap => {
+            const list = document.getElementById('menu-list'); list.innerHTML = ''; const data = snap.val() || {};
+            const grouped = {}; Object.values(data).forEach(i => { if(!grouped[i.category]) grouped[i.category] = []; grouped[i.category].push(i); });
+            Object.keys(grouped).forEach(cat => {
+                list.innerHTML += `<div class="category-title">${cat}</div>`;
+                grouped[cat].forEach(item => {
+                    const sold = item.isSoldOut === true;
+                    list.innerHTML += `<div class="item-card ${sold?'sold-out':''}" onclick="openModal('${item.name}','${item.price}','${item.note||''}','${item.image||''}','${item.category}')">
+                        ${sold?'<div class="sold-out-tag">SOLD OUT</div>':''}<img class="item-img" src="${item.image||'https://via.placeholder.com/150'}">
+                        <div class="item-info"><h3>${item.name}</h3><div class="price">$${item.price}</div></div></div>`;
+                });
+            });
+        });
+        function openModal(n,p,nt,img,c){ tempItem={name:n,price:parseInt(p),category:c}; document.getElementById('m-name').innerText=n; document.getElementById('m-price').innerText='$ '+p; document.getElementById('m-note').innerText=nt; document.getElementById('m-img').src=img; document.getElementById('detail-modal').style.display='flex'; }
+        function closeModal(){ document.getElementById('detail-modal').style.display='none'; }
+        function addFromModal(){ cart.push(tempItem); document.getElementById('cart-info').innerText=`🛒 已選 ${cart.length} 項`; closeModal(); }
+        function submitOrder(){ if(!cart.length) return; const tId = new URLSearchParams(window.location.search).get('table') || '未知';
+            db.ref('orders_v2').push({ tableId:tId, items:cart, totalAmount:cart.reduce((s,i)=>s+i.price,0), timestamp:Date.now(), payStatus:"尚未結帳" }).then(()=>{
+                alert('布拎布拎喫茶店感謝您\n訂單已送出\n請先至櫃台結帳(僅收現金，感謝配合)'); cart=[]; document.getElementById('cart-info').innerText='🛒 尚未挑選餐點';
+            });
+        }
+    </script>
+</body>
+</html>
