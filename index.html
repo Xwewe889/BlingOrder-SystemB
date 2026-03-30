@@ -7,7 +7,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
-        /* 恢復 Eden 原本的粉紅少女感 UI */
         body { font-family: "Microsoft JhengHei", sans-serif; background: #fff0f5; margin: 0; padding: 20px; padding-bottom: 100px; }
         .header { text-align: center; color: #ff69b4; font-size: 26px; margin-bottom: 25px; font-weight: bold; letter-spacing: 2px; }
         .category-group { margin-bottom: 25px; }
@@ -20,7 +19,7 @@
         .item-name { font-weight: bold; font-size: 17px; color: #444; }
         .item-price { color: #ff69b4; font-size: 16px; margin-top: 6px; font-weight: bold; }
 
-        /* 產品詳情彈窗 (Modal) */
+        /* 產品詳情彈窗 */
         #detailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 20px; position: relative; overflow: hidden; animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -30,7 +29,7 @@
         .add-cart-btn { width: 100%; padding: 15px; background: #ff69b4; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px; }
 
         /* 購物車條 */
-        .cart-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: #ff85c0; padding: 15px 25px; border-radius: 40px; display: flex; justify-content: space-between; align-items: center; color: white; font-weight: bold; box-shadow: 0 5px 15px rgba(255,133,192,0.4); z-index: 900; }
+        .cart-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: #ff85c0; padding: 15px 25px; border-radius: 40px; display: flex; justify-content: space-between; align-items: center; color: white; font-weight: bold; box-shadow: 0 5px 15px rgba(255,133,192,0.4); z-index: 900; cursor: pointer; }
         .cart-count { background: white; color: #ff85c0; padding: 2px 10px; border-radius: 10px; margin-right: 5px; }
     </style>
 </head>
@@ -42,9 +41,9 @@
     <p style="text-align: center; color: #aaa;">✨ 正在為您準備美味菜單...</p>
 </div>
 
-<div id="detailModal" onclick="closeDetail(event)">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-btn" onclick="closeDetail()">✕</div>
+<div id="detailModal">
+    <div class="modal-content">
+        <div class="close-btn" onclick="document.getElementById('detailModal').style.display='none'">✕</div>
         <img id="modalImg" class="modal-img">
         <div class="modal-body">
             <h2 id="modalName" style="margin:0; color:#333;"></h2>
@@ -55,9 +54,9 @@
     </div>
 </div>
 
-<div class="cart-bar" id="cartBar" style="display: none;">
+<div class="cart-bar" id="cartBar" style="display: none;" onclick="sendOrder()">
     <div>🛒 <span class="cart-count" id="cartCount">0</span> 份餐點</div>
-    <div onclick="alert('訂單功能開發中！')">送出訂單 ></div>
+    <div>確認送出訂單 ></div>
 </div>
 
 <script>
@@ -73,10 +72,11 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    let currentItem = null;
     let cart = [];
+    let selectedItem = null;
+    const tableNum = new URLSearchParams(window.location.search).get('table') || "外帶";
 
-    // 監聽新資料庫
+    // 監聽 V2 菜單
     database.ref('menu_v2_beta').on('value', (snapshot) => {
         const container = document.getElementById('menuContainer');
         container.innerHTML = "";
@@ -89,7 +89,7 @@
             if (item.status !== "售完") {
                 const cat = item.category || "精選推薦";
                 if (!categories[cat]) categories[cat] = [];
-                categories[cat].push({...item, key});
+                categories[cat].push(item);
             }
         });
 
@@ -112,7 +112,7 @@
     });
 
     function openDetail(name, img, price, desc) {
-        currentItem = { name, price };
+        selectedItem = { name, price };
         document.getElementById('modalName').innerText = name;
         document.getElementById('modalImg').src = img;
         document.getElementById('modalPrice').innerText = '$' + price;
@@ -120,23 +120,32 @@
         document.getElementById('detailModal').style.display = 'flex';
     }
 
-    function closeDetail() {
+    function addToCart() {
+        cart.push({ name: selectedItem.name, price: parseInt(selectedItem.price), count: 1 });
+        updateCartUI();
         document.getElementById('detailModal').style.display = 'none';
     }
 
-    function addToCart() {
-        cart.push(currentItem);
-        updateCartBar();
-        closeDetail();
+    function updateCartUI() {
+        document.getElementById('cartBar').style.display = 'flex';
+        document.getElementById('cartCount').innerText = cart.length;
     }
 
-    function updateCartBar() {
-        const bar = document.getElementById('cartBar');
-        const count = document.getElementById('cartCount');
-        if (cart.length > 0) {
-            bar.style.display = 'flex';
-            count.innerText = cart.length;
-        }
+    function sendOrder() {
+        if (cart.length === 0) return;
+        const total = cart.reduce((sum, i) => sum + (i.price * i.count), 0);
+        
+        database.ref('orders').push({
+            table: tableNum,
+            items: cart,
+            total: total,
+            status: "未處理",
+            time: new Date().toLocaleString()
+        }).then(() => {
+            alert("訂單已送出！店員稍後為您服務。");
+            cart = [];
+            document.getElementById('cartBar').style.display = 'none';
+        }).catch(err => alert("訂單送出失敗：" + err.message));
     }
 </script>
 </body>
