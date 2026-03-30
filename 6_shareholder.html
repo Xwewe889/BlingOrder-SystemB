@@ -2,40 +2,173 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 6.股東月報</title>
+    <title>BlingOrder | 6.股東月報中心</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f5f3ff; padding: 30px; }
-        .report { max-width: 900px; margin: auto; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 30px; text-align: center; }
-        .num { font-size: 28px; font-weight: bold; color: #9b87f5; margin-top: 10px; }
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; --dark-pink: #ff85a2; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
+        .report-container { max-width: 950px; margin: auto; background: white; padding: 40px; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); position: relative; }
+        
+        .header-section { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid var(--p-purple); padding-bottom: 20px; margin-bottom: 30px; }
+        .report-title { margin: 0; color: var(--p-purple); font-size: 28px; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 35px; }
+        .kpi-box { background: #fdfbff; padding: 20px; border-radius: 15px; border: 1px solid #e0d7ff; text-align: center; }
+        .kpi-label { font-size: 13px; color: #888; margin-bottom: 8px; }
+        .kpi-val { font-size: 24px; font-weight: bold; color: var(--p-purple); }
+
+        .charts-flex { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; margin-bottom: 30px; }
+        .chart-wrap { background: #fff; padding: 15px; border-radius: 15px; }
+        h4 { color: #555; text-align: center; margin-bottom: 15px; border-left: 5px solid var(--dark-pink); padding-left: 10px; text-align: left; }
+
+        .summary-box { background: #f9f9f9; padding: 25px; border-radius: 15px; border-left: 8px solid var(--p-purple); line-height: 1.8; color: #444; }
+        
+        select { padding: 10px 15px; border-radius: 10px; border: 2px solid var(--p-purple); font-weight: bold; cursor: pointer; }
+        .print-btn { background: var(--dark-pink); color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        
+        @media print { .no-print { display: none; } .report-container { box-shadow: none; padding: 0; } }
     </style>
 </head>
 <body>
-    <div class="report">
-        <h2 style="color:#9b87f5; border-bottom: 2px solid #eee; padding-bottom: 20px;">📊 6.股東月結經營報告 (V2)</h2>
-        <div id="m-text" style="font-size:18px; color:#666;"></div>
-        <div class="kpi">
-            <div style="background:#f8f7ff; padding:20px; border-radius:15px;">當月總營收<div class="num" id="rev">$ 0</div></div>
-            <div style="background:#fdf2f8; padding:20px; border-radius:15px;">免單招待<div class="num" id="free" style="color:#ff85a2;">$ 0</div></div>
-            <div style="background:#f0fdf4; padding:20px; border-radius:15px;">總訂單數<div class="num" id="cnt" style="color:#4CAF50;">0</div></div>
+    <div class="report-container">
+        <div class="header-section">
+            <div>
+                <h1 class="report-title">📊 股東經營月報</h1>
+                <p style="margin: 5px 0 0; color: #888;">布拎布拎喫茶店 · BlingOrder V2 數據系統</p>
+            </div>
+            <div class="no-print">
+                <select id="month-picker" onchange="loadMonthlyData()">
+                    </select>
+                <button class="print-btn" onclick="window.print()">列印/匯出 PDF</button>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-box"><div class="kpi-label">全月營收總額</div><div class="kpi-val" id="kpi-total">$ 0</div></div>
+            <div class="kpi-box"><div class="kpi-label">實際現金流入</div><div class="kpi-val" id="kpi-cash" style="color:var(--dark-pink);">$ 0</div></div>
+            <div class="kpi-box"><div class="kpi-label">招待/免單支出</div><div class="kpi-val" id="kpi-free">$ 0</div></div>
+            <div class="kpi-box"><div class="kpi-label">成交訂單總數</div><div class="kpi-val" id="kpi-count">0</div></div>
+        </div>
+
+        <div class="charts-flex">
+            <div class="chart-wrap">
+                <h4>🔥 營收貢獻前五名 (圓餅圖)</h4>
+                <div style="height: 280px;"><canvas id="sharePieChart"></canvas></div>
+            </div>
+            <div class="chart-wrap">
+                <h4>📈 週營收成長趨勢 (曲線圖)</h4>
+                <div style="height: 280px;"><canvas id="shareBarChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="summary-box">
+            <h3 style="margin-top:0; color:var(--p-purple);">📝 經營摘要與建議</h3>
+            <div id="summary-content">正在彙整經營數據...</div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center; color: #ccc; font-size: 12px;" class="no-print">
+            本報表由 BlingOrder V2 系統自動生成 · 2026 經營決策專用
         </div>
     </div>
+
     <script>
         const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
-        const now = new Date(); document.getElementById('m-text').innerText = `${now.getFullYear()} 年 ${now.getMonth() + 1} 月 經營結算`;
-        db.ref('orders_v2').once('value', snap => {
-            let r=0, f=0, c=0;
-            Object.values(snap.val()||{}).forEach(o => {
-                const d = new Date(o.timestamp);
-                if(d.getMonth() === now.getMonth()) {
-                    c++; if(o.payStatus==='免單') f+=o.totalAmount; else r+=o.totalAmount;
-                }
+
+        let pieChart, barChart;
+
+        // 初始化月份下拉選單
+        const picker = document.getElementById('month-picker');
+        for(let i=0; i<6; i++) {
+            const d = new Date(); d.setMonth(d.getMonth() - i);
+            const label = `${d.getFullYear()}年 ${d.getMonth()+1}月`;
+            const val = `${d.getFullYear()}-${d.getMonth()+1}`;
+            picker.innerHTML += `<option value="${val}">${label}</option>`;
+        }
+
+        function loadMonthlyData() {
+            const [y, m] = document.getElementById('month-picker').value.split('-').map(Number);
+            db.ref('orders_v2').once('value', snap => {
+                const data = snap.val() || {};
+                let total=0, cash=0, free=0, count=0;
+                let itemSales = {}, weeklyGrowth = [0, 0, 0, 0, 0];
+
+                Object.values(data).forEach(o => {
+                    const d = new Date(o.timestamp);
+                    if(d.getFullYear() === y && (d.getMonth()+1) === m) {
+                        const amt = parseInt(o.totalAmount || 0);
+                        count++;
+                        total += amt;
+                        if(o.payStatus === '免單') free += amt; else cash += amt;
+
+                        // 計算品項貢獻 (圓餅圖數據)
+                        if(o.items) o.items.forEach(i => { itemSales[i.name] = (itemSales[i.name] || 0) + (i.price || 0); });
+
+                        // 計算每週趨勢 (曲線圖數據)
+                        const weekIdx = Math.floor((d.getDate() - 1) / 7);
+                        if(weekIdx < 5) weeklyGrowth[weekIdx] += (o.payStatus === '免單' ? 0 : amt);
+                    }
+                });
+
+                // 更新數據看板
+                document.getElementById('kpi-total').innerText = '$ ' + total.toLocaleString();
+                document.getElementById('kpi-cash').innerText = '$ ' + cash.toLocaleString();
+                document.getElementById('kpi-free').innerText = '$ ' + free.toLocaleString();
+                document.getElementById('kpi-count').innerText = count;
+
+                // 生成文字摘要
+                const freeRate = ((free/total)*100 || 0).toFixed(1);
+                document.getElementById('summary-content').innerHTML = `
+                    本月「布拎布拎喫茶店」共服務 <b>${count}</b> 組訂單，創造了 <b>$${total.toLocaleString()}</b> 的總產值。<br>
+                    扣除行銷招待與免單金額 <b>$${free.toLocaleString()}</b> (佔比約 ${freeRate}%)，實際現金流入為 <b>$${cash.toLocaleString()}</b>。<br>
+                    目前店內營收主力集中在排名前三的品項，建議持續觀察高貢獻品項的物料成本，以維持良好獲利。
+                `;
+
+                updateShareCharts(itemSales, weeklyGrowth);
             });
-            document.getElementById('rev').innerText='$'+r; document.getElementById('free').innerText='$'+f; document.getElementById('cnt').innerText=c;
-        });
+        }
+
+        function updateShareCharts(items, weeks) {
+            // 圓餅圖：品項營收貢獻
+            const sortedItems = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            const ctxPie = document.getElementById('sharePieChart').getContext('2d');
+            if(pieChart) pieChart.destroy();
+            pieChart = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: sortedItems.map(i=>i[0]),
+                    datasets: [{ data: sortedItems.map(i=>i[1]), backgroundColor: ['#9b87f5','#ff85a2','#ffc107','#4caf50','#2196f3'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            // 曲線圖：週成長趨勢
+            const ctxBar = document.getElementById('shareBarChart').getContext('2d');
+            if(barChart) barChart.destroy();
+            barChart = new Chart(ctxBar, {
+                type: 'line',
+                data: {
+                    labels: ['第一週', '第二週', '第三週', '第四週', '第五週'],
+                    datasets: [{ 
+                        label: '週實收額', 
+                        data: weeks, 
+                        borderColor: '#9b87f5', 
+                        backgroundColor: 'rgba(155,135,245,0.1)', 
+                        fill: true, 
+                        tension: 0.3,
+                        borderWidth: 4,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#9b87f5'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        loadMonthlyData();
     </script>
 </body>
 </html>
