@@ -1,77 +1,161 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 1.接單看板</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlingOrder | 雙控管理後台 (V2)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
-        .order-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; border-left: 10px solid #ff85a2; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .table-no { font-size: 32px; font-weight: bold; color: #ff85a2; margin-bottom: 15px; }
-        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
-        .cat-tag { font-size: 11px; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; margin-right: 5px; color: #888; }
-        .btn-pay { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 #3e8e41; transition: 0.1s; }
-        .btn-free { background: #9b87f5; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-left: 12px; box-shadow: 0 5px 0 #7b6ac5; }
-        .btn-pay:active, .btn-free:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+        :root { --primary-pink: #ff85a2; --bg: #fdfdfd; }
+        body { font-family: "PingFang TC", sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        
+        /* 啟動門簾 */
+        #voice-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary-pink); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .start-btn { padding: 30px 60px; font-size: 40px; font-weight: 900; background: white; color: var(--primary-pink); border: none; border-radius: 50px; cursor: pointer; }
+
+        .admin-header { background: white; padding: 20px; border-bottom: 3px solid var(--primary-pink); display: flex; justify-content: space-between; align-items: center; }
+        .rev-info { text-align: right; background: #333; color: white; padding: 10px 20px; border-radius: 12px; }
+
+        .order-list-container { padding: 15px; }
+        .order-row { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); border: 2px solid #eee; display: flex; align-items: center; }
+        
+        .table-box { min-width: 140px; text-align: center; border-right: 3px solid #eee; margin-right: 25px; }
+        .table-text { font-size: 36px; font-weight: 900; color: #333; }
+        .table-text.booth { color: var(--primary-pink); }
+        
+        .items-box { flex-grow: 1; }
+        .item-detail { font-size: 28px; font-weight: 800; color: #000; line-height: 1.5; }
+        .cat-tag { font-size: 14px; background: #f0f0f0; padding: 2px 8px; border-radius: 6px; margin-right: 8px; color: #888; vertical-align: middle; }
+        .item-count { color: var(--primary-pink); margin-left: 10px; font-size: 30px; }
+
+        .action-box { min-width: 250px; text-align: right; margin-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .btn-base { border: none; padding: 15px; border-radius: 12px; font-size: 22px; font-weight: 900; cursor: pointer; transition: 0.2s; }
+        .btn-pay { background: #ffc107; color: #333; box-shadow: 0 4px 0 #d39e00; }
+        .btn-pay.done { background: #e0e0e0; color: #999; box-shadow: none; cursor: default; transform: none; }
+        .btn-ship { background: #4caf50; color: white; box-shadow: 0 4px 0 #2e7d32; }
+        .btn-ship:active { transform: translateY(4px); box-shadow: 0 1px 0 #2e7d32; }
+
+        .price-text { font-size: 24px; font-weight: bold; color: var(--primary-pink); margin-bottom: 5px; }
+        .report-link { display: block; text-align: center; padding: 20px; color: #888; text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2 style="color:#ff85a2; text-align:center;">🌸 1.現場接單中心 (V2)</h2>
-    <div id="order-list"></div>
-    <script>
-        // Firebase 配置
-        const firebaseConfig = { 
-            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
-            authDomain: "blingorder.firebaseapp.com", 
-            projectId: "blingorder", 
-            databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
-            appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
-        };
-        firebase.initializeApp(firebaseConfig); 
-        const db = firebase.database();
 
-        // 分類排序權重
-        const catOrder = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
+<div id="voice-overlay">
+    <button class="start-btn" onclick="initVoice()">啟動系統</button>
+</div>
 
-        // 監聽訂單 (路徑: orders_v2)
-        db.ref('orders_v2').on('value', snap => {
-            const list = document.getElementById('order-list'); 
-            list.innerHTML = '';
-            
-            snap.forEach(child => {
-                const o = child.val(); 
-                // 僅顯示尚未結帳的訂單
-                if(o.payStatus === "尚未結帳") {
+<div class="admin-header">
+    <h1 style="margin:0; font-size:24px; color:var(--primary-pink);">💎 BlingOrder 接單看板 (V2)</h1>
+    <div class="rev-info"><div id="rev-val" style="font-size:24px; font-weight:bold;">$0</div></div>
+</div>
+
+<div class="order-list-container" id="list-box"></div>
+
+<a href="report.html" class="report-link">查看今日報表 ⮕</a>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+        authDomain: "blingorder.firebaseapp.com",
+        projectId: "blingorder",
+        databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+        appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let isSystemReady = false;
+    let knownOrderIds = null;
+    const todayStr = new Date().toLocaleDateString('zh-TW');
+    const catOrder = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
+
+    function initVoice() {
+        isSystemReady = true;
+        document.getElementById('voice-overlay').style.display = 'none';
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance("系統就緒"));
+    }
+
+    // 改監聽 orders_v2
+    db.ref('orders_v2').on('value', snap => {
+        const listBox = document.getElementById('list-box');
+        listBox.innerHTML = "";
+        let todaySum = 0;
+        let shouldSpeak = false;
+        let currentIds = new Set();
+
+        snap.forEach(child => {
+            const o = child.val();
+            const id = child.key;
+            // 使用訂單內部的 timestamp 或是 child.key 作為日期判斷
+            const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
+
+            if (orderDate === todayStr) {
+                // 如果是「已結帳」或「免單」，則計入營業額 (排除尚未結帳的)
+                if (o.payStatus === "已結帳" || o.payStatus === "免單") {
+                    todaySum += parseInt(o.totalAmount || 0);
+                }
+
+                // 只要狀態不是「已出餐」，就顯示在畫面上
+                if (o.status !== "已出餐") {
+                    currentIds.add(id);
+                    if (knownOrderIds !== null && !knownOrderIds.has(id)) shouldSpeak = true;
+
+                    const isB = (o.tableId == "7" || o.tableId == "包廂");
+                    const isPaid = (o.payStatus === "已結帳" || o.payStatus === "免單");
+                    
                     // 依照分類排序餐點
                     const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
-                    
-                    list.innerHTML += `
-                        <div class="order-card">
-                            <div class="table-no">桌號：${o.tableId || '外帶'}</div>
-                            <div>
-                                ${sortedItems.map(i => `
-                                    <div class="item-row">
-                                        <span><span class="cat-tag">${i.category || '一般'}</span><b>${i.name}</b></span>
-                                        <span>x ${i.count || 1}</span>
-                                    </div>
-                                `).join('')}
+
+                    listBox.innerHTML = `
+                        <div class="order-row">
+                            <div class="table-box">
+                                <div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : (o.tableId || '外帶') + '桌'}</div>
                             </div>
-                            <div style="text-align:right; margin-top:20px;">
-                                <button class="btn-pay" onclick="updatePay('${child.key}','已結帳')">現金結帳 $${o.totalAmount || 0}</button>
-                                <button class="btn-free" onclick="updatePay('${child.key}','免單')">✨ 招待免單</button>
+                            <div class="items-box">
+                                <div class="item-detail">
+                                    ${sortedItems.map(i => `
+                                        <div>
+                                            <span class="cat-tag">${i.category || '一般'}</span>${i.name}
+                                            <span class="item-count">x ${i.count || 1}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
-                        </div>`;
+                            <div class="action-box">
+                                <div class="price-text">$${o.totalAmount || 0}</div>
+                                <button class="btn-base btn-pay ${isPaid ? 'done' : ''}" onclick="${isPaid ? '' : `payOrder('${id}')`}">
+                                    ${isPaid ? `✓ ${o.payStatus}` : '現金結帳'}
+                                </button>
+                                <button class="btn-base btn-ship" onclick="shipOrder('${id}')">已出餐</button>
+                            </div>
+                        </div>` + listBox.innerHTML;
                 }
-            });
+            }
         });
 
-        // 更新付款狀態
-        function updatePay(k, s) { 
-            if(confirm(`確定標記為 ${s} 嗎？`)) {
-                db.ref('orders_v2/'+k).update({ payStatus: s }); 
+        if (knownOrderIds === null) { knownOrderIds = currentIds; } 
+        else {
+            if (shouldSpeak && isSystemReady) {
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance("您有新訂單"));
             }
+            knownOrderIds = currentIds;
         }
-    </script>
+        document.getElementById('rev-val').innerText = "$" + todaySum.toLocaleString();
+    });
+
+    function payOrder(id) {
+        if(confirm("確定標記為 已結帳 嗎？")) {
+            db.ref('orders_v2/' + id).update({ payStatus: "已結帳" });
+        }
+    }
+
+    function shipOrder(id) {
+        db.ref('orders_v2/' + id).update({ status: "已出餐" });
+    }
+</script>
 </body>
 </html>
