@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>🧪 B.測試接單看板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #e5e7eb; padding: 20px; }
+        .order-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; border-left: 10px solid #6b7280; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .table-no { font-size: 32px; font-weight: bold; color: #374151; margin-bottom: 15px; }
+        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .btn-pay { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 #3e8e41; }
+        .btn-free { background: #9b87f5; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-left: 12px; box-shadow: 0 5px 0 #7b6ac5; }
+        .test-tag { background: #000; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 10px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="test-tag">🧪 測試資料庫：orders_v2_beta</div>
+    <div id="order-list"></div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        const catOrder = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
+        db.ref('orders_v2_beta').on('value', snap => {
+            const list = document.getElementById('order-list'); list.innerHTML = '';
+            snap.forEach(child => {
+                const o = child.val(); if(o.payStatus === "尚未結帳") {
+                    const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
+                    list.innerHTML += `<div class="order-card"><div class="table-no">測試桌：${o.tableId}</div>
+                        <div>${sortedItems.map(i => `<div class="item-row"><span><b>${i.name}</b></span><span>x 1</span></div>`).join('')}</div>
+                        <div style="text-align:right; margin-top:20px;">
+                            <button class="btn-pay" onclick="db.ref('orders_v2_beta/${child.key}').update({payStatus:'已結帳'})">測試結帳 $${o.totalAmount}</button>
+                            <button class="btn-free" onclick="db.ref('orders_v2_beta/${child.key}').update({payStatus:'免單'})">測試免單</button>
+                        </div></div>`;
+                }
+            });
+        });
+    </script>
+</body>
+</html>

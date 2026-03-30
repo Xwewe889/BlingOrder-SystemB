@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>🧪 B.測試股東月報</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
+        body { font-family: sans-serif; background: #e5e7eb; padding: 20px; }
+        .report-container { max-width: 950px; margin: auto; background: white; padding: 40px; border-radius: 25px; border: 2px solid #000; }
+        .header-section { border-bottom: 3px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 35px; }
+        .kpi-box { background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #ddd; text-align: center; }
+        .charts-flex { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; }
+    </style>
+</head>
+<body>
+    <div class="report-container">
+        <div class="header-section">
+            <h1 style="margin:0;">🧪 B.測試經營月報</h1>
+            <p style="color:red; font-weight:bold;">[ 此為測試數據，非正式營收 ]</p>
+        </div>
+        <div class="kpi-grid">
+            <div class="kpi-box">測試總營收<div id="kpi-total" style="font-size:24px; font-weight:bold;">$ 0</div></div>
+            <div class="kpi-box">測試實收<div id="kpi-cash" style="font-size:24px; font-weight:bold;">$ 0</div></div>
+            <div class="kpi-box">測試招待<div id="kpi-free" style="font-size:24px; font-weight:bold;">$ 0</div></div>
+            <div class="kpi-box">測試訂單數<div id="kpi-count" style="font-size:24px; font-weight:bold;">0</div></div>
+        </div>
+        <div class="charts-flex">
+            <div style="height: 300px;"><canvas id="sharePieChart"></canvas></div>
+            <div style="height: 300px;"><canvas id="shareBarChart"></canvas></div>
+        </div>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        let pieChart, barChart;
+        function loadData() {
+            const now = new Date();
+            db.ref('orders_v2_beta').once('value', snap => {
+                const data = snap.val() || {};
+                let t=0, c=0, f=0, cnt=0; let items={}, weeks=[0,0,0,0,0];
+                Object.values(data).forEach(o => {
+                    const d = new Date(o.timestamp);
+                    if(d.getMonth() === now.getMonth()) {
+                        const amt = parseInt(o.totalAmount||0); cnt++; t+=amt;
+                        if(o.payStatus==='免單') f+=amt; else c+=amt;
+                        if(o.items) o.items.forEach(i=>{ items[i.name]=(items[i.name]||0)+i.price; });
+                        const w = Math.floor((d.getDate()-1)/7); if(w<5) weeks[w]+=amt;
+                    }
+                });
+                document.getElementById('kpi-total').innerText='$'+t; document.getElementById('kpi-cash').innerText='$'+c;
+                document.getElementById('kpi-free').innerText='$'+f; document.getElementById('kpi-count').innerText=cnt;
+                updateCharts(items, weeks);
+            });
+        }
+        function updateCharts(items, weeks) {
+            const si = Object.entries(items).sort((a,b)=>b[1]-a[1]).slice(0,5);
+            const ctxP = document.getElementById('sharePieChart').getContext('2d');
+            if(pieChart) pieChart.destroy();
+            pieChart = new Chart(ctxP, { type:'doughnut', data:{ labels:si.map(i=>i[0]), datasets:[{data:si.map(i=>i[1]), backgroundColor:['#666','#888','#aaa','#ccc','#eee']}] } });
+            const ctxB = document.getElementById('shareBarChart').getContext('2d');
+            if(barChart) barChart.destroy();
+            barChart = new Chart(ctxB, { type:'line', data:{ labels:['W1','W2','W3','W4','W5'], datasets:[{label:'測試週營收', data:weeks, borderColor:'#333', fill:true, backgroundColor:'rgba(0,0,0,0.05)'}] } });
+        }
+        loadData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>🧪 B.測試分析儀表板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
+        body { font-family: sans-serif; background: #e5e7eb; padding: 20px; }
+        .test-banner { background: #000; color: #ffeb3b; text-align: center; padding: 8px; font-weight: bold; margin-bottom: 20px; border-radius: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .card { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .val { font-size: 24px; font-weight: bold; color: #333; margin-top: 5px; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        select { padding: 8px; border-radius: 8px; border: 1px solid #666; }
+    </style>
+</head>
+<body>
+    <div class="test-banner">🧪 B 系統經營分析測試 (資料庫：orders_v2_beta)</div>
+    
+    <div class="grid">
+        <div class="card">測試本日實收<div class="val" id="t-real">$ 0</div></div>
+        <div class="card">測試本月累計<div class="val" id="m-real">$ 0</div></div>
+        <div class="card">測試歷史總計<div class="val" id="all-real">$ 0</div></div>
+    </div>
+
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3 style="margin:0;">📈 測試趨勢與平均線</h3>
+            <select id="trend-range" onchange="renderCharts()">
+                <option value="7">最近一週</option>
+                <option value="30" selected>最近一月</option>
+            </select>
+        </div>
+        <div style="height: 350px;"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        let trendChart; let globalData = {};
+
+        db.ref('orders_v2_beta').on('value', snap => { globalData = snap.val() || {}; renderCharts(); });
+
+        function renderCharts() {
+            const now = new Date(); const todayStr = now.toLocaleDateString('zh-TW');
+            let tr=0, mr=0, ar=0; let daily={};
+
+            Object.values(globalData).forEach(o => {
+                const amount = parseInt(o.totalAmount||0); const d = new Date(o.timestamp); const dStr = d.toLocaleDateString('zh-TW');
+                if(o.payStatus !== "免單") {
+                    ar += amount; if(dStr === todayStr) tr += amount;
+                    if(d.getMonth() === now.getMonth()) mr += amount;
+                    daily[dStr] = (daily[dStr]||0) + amount;
+                }
+            });
+
+            document.getElementById('t-real').innerText = '$ '+tr.toLocaleString();
+            document.getElementById('m-real').innerText = '$ '+mr.toLocaleString();
+            document.getElementById('all-real').innerText = '$ '+ar.toLocaleString();
+            
+            const range = parseInt(document.getElementById('trend-range').value);
+            const labels = []; const dataVal = []; const avgVal = [];
+
+            for(let i=range-1; i>=0; i--) {
+                const d = new Date(); d.setDate(d.getDate()-i); const s = d.toLocaleDateString('zh-TW');
+                labels.push(s.split('/')[1]+'/'+s.split('/')[2]); dataVal.push(daily[s]||0);
+            }
+
+            const avg = dataVal.reduce((a,b)=>a+b,0)/dataVal.length;
+            labels.forEach(()=>avgVal.push(avg.toFixed(0)));
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            if(trendChart) trendChart.destroy();
+            trendChart = new Chart(ctx, {
+                type:'line', 
+                data:{ 
+                    labels, 
+                    datasets:[
+                        {label:'測試營業額', data:dataVal, borderColor:'#666', fill:true, backgroundColor:'rgba(0,0,0,0.05)', tension:0.4},
+                        {label:'測試平均線', data:avgVal, borderColor:'#ff5252', borderDash:[5,5], pointRadius:0}
+                    ]
+                }, 
+                options: { responsive:true, maintainAspectRatio:false }
+            });
+        }
+    </script>
+</body>
+</html>
