@@ -33,9 +33,12 @@
             z-index: 1;
         }
 
-        /* 2. 分類容器：這裡要擺放電話與打字機 */
+        /* 2. 桌號資訊：此處已根據要求刪除 */
+        /* .table-info { ... } */
+
+        /* 3. 分類容器：調整間距，確保橫桿介於 Banner 與菜單中間 */
         .category-container {
-            margin: 60px 0 30px; /* 增加間距給物件伸展 */
+            margin: 50px 0 25px; /* 精確定位：讓橫桿位於合適高度 */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -44,7 +47,7 @@
             z-index: 10;
         }
 
-        /* 木頭橫桿：底層 */
+        /* 木頭裝飾橫桿：底層 */
         .category-container::after {
             content: "";
             position: absolute;
@@ -57,46 +60,48 @@
             z-index: 1;
         }
 
-        /* 左側電話 */
+        /* 電話：加重陰影並縮小 */
         .deco-phone {
             position: absolute;
-            left: 5px; /* 靠左 */
+            left: 10px;
             top: 50%;
-            transform: translateY(-55%);
-            width: 80px;
+            transform: translateY(-50%);
+            width: 70px; /* 依照打字機比例調整 */
             z-index: 5; /* 壓在橫桿上 */
-            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4));
+            filter: drop-shadow(4px 6px 10px rgba(0,0,0,0.6)); /* 加重立體陰影 */
         }
 
-        /* 右側打字機 */
+        /* 打字機：加重陰影並靠右 */
         .deco-typewriter {
             position: absolute;
-            right: 5px; /* 靠右 */
+            right: 10px;
             top: 50%;
-            transform: translateY(-65%);
-            width: 85px;
+            transform: translateY(-60%);
+            width: 80px;
             z-index: 5; /* 壓在橫桿上 */
-            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4));
+            filter: drop-shadow(4px 6px 10px rgba(0,0,0,0.6)); /* 加重立體陰影 */
         }
 
-        /* 中間鐵牌組合 */
+        /* 中間鐵牌組合：最高層，並縮短 */
         .category-badge {
             position: relative;
             z-index: 6; /* 最高層，壓在所有人上面 */
             display: inline-flex;
             height: 60px;
-            filter: drop-shadow(4px 6px 10px rgba(0,0,0,0.5));
+            filter: drop-shadow(6px 8px 15px rgba(0,0,0,0.5)); /* 加重鐵牌陰影 */
+            max-width: 60%; /* 精確定位：縮短鐵牌，給左右物件留空間 */
         }
         .cat-left { width: 35px; background: url('../images/retro/category_left.png') no-repeat; background-size: 100% 100%; }
         .cat-mid { 
             background: url('../images/retro/category_mid.png') repeat-x; background-size: auto 100%; 
             padding: 0 25px; display: flex; align-items: center;
             color: #3d2b1f; font-weight: bold; font-size: 24px; letter-spacing: 2px;
-            white-space: nowrap;
+            white-space: nowrap; /* 確保文字不換行 */
+            overflow: hidden; /* 確保牌子縮短時不爆字 */
         }
         .cat-right { width: 35px; background: url('../images/retro/category_right.png') no-repeat; background-size: 100% 100%; }
 
-        /* 菜單網格 */
+        /* 菜單網格：雙欄排版 */
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -108,6 +113,7 @@
 
         .item-card {
             background: #fdfaf1;
+            /* 九宮格邊框優化 */
             border: 18px solid transparent;
             border-image: url('../images/retro/retro_frame.png') 45 stretch;
             padding: 0;
@@ -117,26 +123,91 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        .item-img { width: 90%; aspect-ratio: 1/1; object-fit: cover; margin-top: 5px; border: 1px solid #d4af37; }
+        .item-img {
+            width: 90%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            margin-top: 5px;
+            border: 1px solid #d4af37;
+        }
+
         .item-info { padding: 10px 5px; text-align: center; width: 100%; }
         .item-info h3 { margin: 5px 0; font-size: 16px; color: #3d2b1f; height: 45px; display: flex; align-items: center; justify-content: center; }
         .price { font-family: "Georgia", serif; color: #a52a2a; font-weight: bold; font-size: 20px; }
-        .add-btn-icon { width: 65px; cursor: pointer; transition: 0.2s; filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3)); }
 
-        /* 捲動條 */
+        /* 老收音機旋鈕按鈕 */
+        .add-btn-icon {
+            width: 65px;
+            cursor: pointer;
+            transition: 0.2s;
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3));
+        }
+        .add-btn-icon:active { transform: scale(0.9) rotate(15deg); }
+
+        /* 複古捲動條 */
         ::-webkit-scrollbar { width: 28px; }
         ::-webkit-scrollbar-track {
-            background-image: url('../images/retro/retro_track_top.png'), url('../images/retro/retro_track_bottom.png'), url('../images/retro/retro_track_mid.png');
+            background-image: url('../images/retro/retro_track_top.png'), 
+                              url('../images/retro/retro_track_bottom.png'), 
+                              url('../images/retro/retro_track_mid.png');
             background-position: top center, bottom center, center;
             background-repeat: no-repeat, no-repeat, repeat-y;
             background-size: 100% auto;
         }
-        ::-webkit-scrollbar-thumb { background: url('../images/retro/retro_scroll_handle.png') no-repeat center; background-size: 22px; }
+        ::-webkit-scrollbar-thumb {
+            background: url('../images/retro/retro_scroll_handle.png') no-repeat center;
+            background-size: 22px;
+        }
 
-        /* 底部 */
-        .footer-container { position: fixed; bottom: 0; left: 0; width: 100%; height: 110px; display: flex; justify-content: center; align-items: center; z-index: 900; pointer-events: none; }
-        .cart-footer { pointer-events: auto; width: 320px; height: 80px; background: url('../images/retro/retro_submit_order.png') no-repeat center; background-size: contain; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
-        #cart-status { color: #fff; font-size: 13px; margin-top: -8px; font-weight: bold; text-shadow: 1px 1px 3px #000; background: rgba(0,0,0,0.3); padding: 2px 10px; border-radius: 10px; }
+        /* 底部固定區域 */
+        .footer-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 110px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 900;
+            pointer-events: none;
+        }
+
+        .cart-footer {
+            pointer-events: auto;
+            width: 320px;
+            height: 80px;
+            background: url('../images/retro/retro_submit_order.png') no-repeat center;
+            background-size: contain;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5));
+            cursor: pointer;
+        }
+        
+        #cart-status { 
+            color: #fff; 
+            font-size: 13px; 
+            margin-top: -8px; 
+            font-weight: bold; 
+            text-shadow: 1px 1px 3px #000;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+
+        /* Modal 修正 */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; }
+        .modal-content {
+            background: #fdfaf1;
+            border: 22px solid transparent;
+            border-image: url('../images/retro/retro_modal.png') 80 stretch;
+            width: 85%;
+            max-width: 380px;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -144,14 +215,14 @@
 
     <div id="menu-list"></div>
 
-    <div id="detail-modal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center;">
-        <div class="modal-content" style="background:#fdfaf1; border:22px solid transparent; border-image:url('../images/retro/retro_modal.png') 80 stretch; width:85%; max-width:380px;">
-            <img id="m-img" style="width:100%; height:200px; object-fit:cover; border-bottom:2px solid var(--retro-gold);" src="">
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
+            <img id="m-img" style="width:100%; height: 200px; object-fit: cover; border-bottom:2px solid var(--retro-gold);" src="">
             <div style="padding:20px; text-align:center;">
-                <h2 id="m-name" style="margin:0; font-size:24px;"></h2>
-                <p id="m-note" style="font-size:15px; margin:15px 0; color:#5d3a1a;"></p>
-                <div id="m-price" style="font-size:28px; color:#a52a2a; font-weight:bold; margin-bottom:10px;"></div>
-                <img src="../images/retro/retro_button.png" class="add-btn-icon" style="width:120px;" onclick="addFromModal()">
+                <h2 id="m-name" style="margin:0; font-size: 24px;"></h2>
+                <p id="m-note" style="font-size:15px; margin:15px 0; color: #5d3a1a;"></p>
+                <div id="m-price" style="font-size:28px; color:#a52a2a; font-weight:bold; margin-bottom: 10px;"></div>
+                <img src="../images/retro/retro_button.png" class="add-btn-icon" style="width: 120px;" onclick="addFromModal()">
                 <div onclick="closeModal()" style="margin-top:20px; color:#888; font-size:14px; text-decoration:underline; cursor:pointer;">返回菜單</div>
             </div>
         </div>
@@ -182,12 +253,14 @@
             list.innerHTML = ''; 
             const data = snap.val() || {};
             const grouped = {}; 
+            
             Object.values(data).forEach(i => {
                 if(!grouped[i.category]) grouped[i.category] = [];
                 grouped[i.category].push(i);
             });
 
             Object.keys(grouped).forEach(cat => {
+                // 修正：重新組合分類區塊，精確擺放電話與打字機
                 list.innerHTML += `
                     <div class="category-container">
                         <img src="../images/retro/retro_phone.png" class="deco-phone">
@@ -201,8 +274,9 @@
                 
                 let itemsHtml = '<div class="menu-grid">';
                 grouped[cat].forEach(item => {
+                    const isSoldOut = item.isSoldOut === true;
                     itemsHtml += `
-                        <div class="item-card" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}', '${item.image || ''}', '${item.category}')">
+                        <div class="item-card ${isSoldOut ? 'sold-out' : ''}" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}', '${item.image || ''}', '${item.category}')">
                             <img class="item-img" src="${item.image || 'https://via.placeholder.com/150'}">
                             <div class="item-info">
                                 <h3>${item.name}</h3>
@@ -224,13 +298,25 @@
             document.getElementById('m-img').src = img || 'https://via.placeholder.com/300';
             document.getElementById('detail-modal').style.display = 'flex';
         }
+
         function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
-        function addFromModal() { cart.push(tempItem); document.getElementById('cart-status').innerText = `🛒 已選 ${cart.length} 項`; closeModal(); }
+
+        function addFromModal() {
+            cart.push(tempItem);
+            document.getElementById('cart-status').innerText = `🛒 已選 ${cart.length} 項`;
+            closeModal();
+        }
+
         function submitOrder() {
             if(!cart.length) return alert('請先選購餐點喔！');
-            db.ref('orders_v2_beta').push({ items: cart, totalAmount: cart.reduce((s, i) => s + i.price, 0), timestamp: Date.now() }).then(() => {
+            db.ref('orders_v2_beta').push({
+                items: cart,
+                totalAmount: cart.reduce((s, i) => s + i.price, 0),
+                timestamp: Date.now()
+            }).then(() => {
                 alert('🧪 昭和測試單已送出！');
-                cart = []; document.getElementById('cart-status').innerText = '尚未挑選測試餐點';
+                cart = [];
+                document.getElementById('cart-status').innerText = '尚未挑選測試餐點';
             });
         }
     </script>
