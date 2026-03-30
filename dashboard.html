@@ -2,149 +2,135 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlingOrder | 數據分析中心</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary-pink: #ff85a2; --soft-pink: #fff0f3; }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: #fffafb; margin: 0; padding: 25px; color: #444; }
-        .header { text-align: center; margin-bottom: 35px; }
-        .title { color: var(--primary-pink); font-size: 32px; font-weight: bold; letter-spacing: 3px; }
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 35px; }
-        .stat-card { background: white; padding: 25px; border-radius: 20px; text-align: center; box-shadow: 0 8px 20px rgba(255,133,162,0.1); border: 1px solid var(--soft-pink); }
-        .stat-val { font-size: 28px; font-weight: 800; color: var(--primary-pink); margin: 10px 0; }
-        .stat-label { color: #888; font-size: 14px; font-weight: bold; }
-        .content-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 25px; }
-        .panel { background: white; padding: 30px; border-radius: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid var(--soft-pink); margin-bottom: 25px; }
-        .panel-title { font-size: 20px; font-weight: bold; color: var(--primary-pink); margin-bottom: 20px; border-left: 5px solid var(--primary-pink); padding-left: 12px; }
-        .daily-item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px dotted #ffccd5; }
-        .rank-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #fff5f7; }
+        :root { --primary-pink: #ffafbd; --secondary-pink: #ffc3a0; --dark-pink: #e91e63; --bg-light: #fff5f7; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: var(--bg-light); margin: 0; padding: 20px; color: #555; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 30px; }
+        h1 { color: var(--dark-pink); font-size: 2.5rem; margin-bottom: 10px; }
+        .last-update { font-size: 0.9rem; color: #999; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(255,175,189,0.2); text-align: center; border-bottom: 5px solid var(--primary-pink); }
+        .stat-card h3 { margin: 0; font-size: 1rem; color: #888; }
+        .stat-card .value { font-size: 2rem; font-weight: bold; color: var(--dark-pink); margin: 10px 0; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .chart-title { font-weight: bold; color: var(--dark-pink); margin-bottom: 15px; display: flex; align-items: center; }
+        .ranking-list { list-style: none; padding: 0; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-<div class="header">
-    <div class="title">💎 BlingOrder 營運數據分析</div>
-    <p id="sync-time" style="color:#bbb; font-weight: bold; margin-top: 10px;">數據即時同步中...</p>
-</div>
+    <div class="container">
+        <header>
+            <h1>💎 BlingOrder 營運數據分析</h1>
+            <div class="last-update" id="update-time">最後更新：載入中...</div>
+        </header>
 
-<div class="stat-grid">
-    <div class="stat-card"><div class="stat-label">📅 本日營收 (3/27)</div><div class="stat-val" id="today-rev">$0</div></div>
-    <div class="stat-card"><div class="stat-label">📅 昨日營收 (3/26)</div><div class="stat-val" id="yesterday-rev">$0</div></div>
-    <div class="stat-card"><div class="stat-label">📅 本月累計</div><div class="stat-val" id="month-rev">$0</div></div>
-    <div class="stat-card"><div class="stat-label">📈 歷史總營收</div><div class="stat-val" id="total-rev">$0</div></div>
-</div>
+        <div class="stats-grid">
+            <div class="stat-card"><h3>📅 本日營收</h3><div class="value" id="today-revenue">$0</div></div>
+            <div class="stat-card"><h3>📅 昨日營收</h3><div class="value" id="yesterday-revenue">$0</div></div>
+            <div class="stat-card"><h3>📊 本月累計</h3><div class="value" id="month-revenue">$0</div></div>
+            <div class="stat-card"><h3>📈 歷史總營收</h3><div class="value" id="total-revenue">$0</div></div>
+        </div>
 
-<div class="content-grid">
-    <div class="left-col">
-        <div class="panel">
-            <div class="panel-title">🥧 熱銷品項佔比</div>
-            <div style="height: 400px; position: relative;"><canvas id="pieChart"></canvas></div>
-        </div>
-        <div class="panel">
-            <div class="panel-title">🗓️ 每日營收日誌</div>
-            <div id="daily-log"></div>
-        </div>
-    </div>
-    <div class="right-col">
-        <div class="panel">
-            <div class="panel-title">🏆 銷售排行榜</div>
-            <div id="rank-list"></div>
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">🍎 熱銷品項佔比</div>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">🏆 銷售排行榜</div>
+                <ul class="ranking-list" id="ranking-list"><li>載入中...</li></ul>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    let pieChart = null;
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    // 統一格式化日期，確保 18:00 的新單能被正確歸類到「今天」
-    function getStandardDate(ts) {
-        const d = new Date(ts);
-        return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-    }
+        function formatCurrency(num) { return '$' + Number(num).toLocaleString(); }
 
-    db.ref('orders').on('value', snap => {
-        let todaySum = 0, yesterdaySum = 0, monthSum = 0, totalSum = 0;
-        let itemSales = {};
-        let dailyTotals = {};
+        function updateDashboard() {
+            db.ref('orders').once('value', (snapshot) => {
+                const orders = snapshot.val() || {};
+                const now = new Date();
+                const todayStr = now.toLocaleDateString('zh-TW');
+                const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
+                const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
 
-        const now = new Date();
-        const todayStr = getStandardDate(now.getTime());
-        const yesterdayStr = getStandardDate(now.getTime() - 86400000);
-        const currentMonth = now.getMonth();
+                let todayRev = 0, yesterdayRev = 0, monthRev = 0, totalRev = 0;
+                let itemCounts = {};
 
-        snap.forEach(child => {
-            const o = child.val();
-            // 讀取金額 (優先讀取清洗後的 totalPrice)
-            const amt = Number(o.totalPrice || o.total || 0);
-            const ts = Number(o.timestamp || parseInt(child.key));
-            if (isNaN(ts) || amt === 0) return;
+                Object.values(orders).forEach(order => {
+                    const amount = parseInt(order.totalAmount || 0);
+                    const orderDate = new Date(order.timestamp).toLocaleDateString('zh-TW');
+                    const orderMonth = new Date(order.timestamp).getMonth();
 
-            const dateStr = getStandardDate(ts);
-            const dateObj = new Date(ts);
+                    totalRev += amount;
+                    if (orderDate === todayStr) todayRev += amount;
+                    if (orderDate === yesterdayStr) yesterdayRev += amount;
+                    if (orderMonth === now.getMonth()) monthRev += amount;
 
-            totalSum += amt;
-            dailyTotals[dateStr] = (dailyTotals[dateStr] || 0) + amt;
-
-            if (dateStr === todayStr) todaySum += amt;
-            if (dateStr === yesterdayStr) yesterdaySum += amt;
-            if (dateObj.getMonth() === currentMonth) monthSum += amt;
-
-            // 銷售統計
-            if (Array.isArray(o.items)) {
-                o.items.forEach(item => {
-                    let name = (typeof item === 'object') ? (item.name || "未知") : String(item);
-                    let pureName = name.split('(')[0].trim();
-                    if (pureName) itemSales[pureName] = (itemSales[pureName] || 0) + 1;
+                    if (order.items) {
+                        order.items.forEach(item => {
+                            itemCounts[item.name] = (itemCounts[item.name] || 0) + (item.quantity || 1);
+                        });
+                    }
                 });
-            }
-        });
 
-        document.getElementById('today-rev').innerText = `$${todaySum.toLocaleString()}`;
-        document.getElementById('yesterday-rev').innerText = `$${yesterdaySum.toLocaleString()}`;
-        document.getElementById('month-rev').innerText = `$${monthSum.toLocaleString()}`;
-        document.getElementById('total-rev').innerText = `$${totalSum.toLocaleString()}`;
-        document.getElementById('sync-time').innerText = `最後更新：${new Date().toLocaleTimeString()}`;
+                document.getElementById('today-revenue').innerText = formatCurrency(todayRev);
+                document.getElementById('yesterday-revenue').innerText = formatCurrency(yesterdayRev);
+                document.getElementById('month-revenue').innerText = formatCurrency(monthRev);
+                document.getElementById('total-revenue').innerText = formatCurrency(totalRev);
+                document.getElementById('update-time').innerText = `最後更新：${new Date().toLocaleString()}`;
 
-        updateVisuals(itemSales, dailyTotals);
-    });
+                updateCharts(itemCounts);
+            });
+        }
 
-    function updateVisuals(itemData, dailyData) {
-        const dailyLog = document.getElementById('daily-log');
-        const sortedDates = Object.keys(dailyData).sort((a,b) => new Date(b) - new Date(a));
-        dailyLog.innerHTML = sortedDates.slice(0, 10).map(date => `
-            <div class="daily-item">
-                <span>${date}</span>
-                <span style="color:var(--primary-pink);font-weight:800">$${dailyData[date].toLocaleString()}</span>
-            </div>
-        `).join('');
+        let pieChart;
+        function updateCharts(itemCounts) {
+            const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
+            const labels = sortedItems.map(i => i[0]);
+            const data = sortedItems.map(i => i[1]);
 
-        const sortedItems = Object.entries(itemData).sort((a,b) => b[1] - a[1]);
-        const list = document.getElementById('rank-list');
-        list.innerHTML = sortedItems.slice(0, 15).map(([name, qty], i) => `
-            <div class="rank-item">
-                <span>${i+1}. ${name}</span>
-                <span style="color:#aaa">${qty} 份</span>
-            </div>
-        `).join('');
+            const listEl = document.getElementById('ranking-list');
+            listEl.innerHTML = sortedItems.map((item, index) => 
+                `<li class="ranking-item"><span>${index + 1}. ${item[0]}</span><span>${item[1]} 份</span></li>`
+            ).join('');
 
-        const ctx = document.getElementById('pieChart').getContext('2d');
-        if (pieChart) pieChart.destroy();
-        pieChart = new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: sortedItems.slice(0, 8).map(x => x[0]),
-                datasets: [{
-                    data: sortedItems.slice(0, 8).map(x => x[1]),
-                    backgroundColor: ['#ff85a2', '#ffb3c1', '#ffc2d1', '#ffdee5', '#fb6f92', '#ff8fab', '#ffa5ab', '#ffd6d6']
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
-</script>
+            const ctx = document.getElementById('pieChart').getContext('2d');
+            if (pieChart) pieChart.destroy();
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels.slice(0, 8),
+                    datasets: [{
+                        data: data.slice(0, 8),
+                        backgroundColor: ['#ffafbd', '#ffc3a0', '#ff9a9e', '#fad0c4', '#a1c4fd', '#c2e9fb', '#fbc2eb', '#a6c1ee']
+                    }]
+                }
+            });
+        }
+
+        updateDashboard();
+        setInterval(updateDashboard, 60000);
+    </script>
 </body>
 </html>
