@@ -3,33 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder - 訂單管理系統 (進階流程版)</title>
+    <title>BlingOrder - 訂單管理 V2 (修復版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", sans-serif; background: #2d3436; color: white; padding: 20px; }
-        .order-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .order-card { background: #636e72; border-radius: 12px; padding: 15px; border-left: 8px solid #ff7675; transition: 0.3s; }
-        /* 已結帳但未出餐的顏色 */
-        .order-card.paid { border-left-color: #fdcb6e; background: #4b5457; }
-        .order-header { display: flex; justify-content: space-between; border-bottom: 1px solid #ffffff33; padding-bottom: 10px; margin-bottom: 10px; }
-        .item-row { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 5px; }
-        .total-price { text-align: right; font-weight: bold; color: #fab1a0; font-size: 18px; margin-top: 10px; }
+        h1 { display: flex; align-items: center; gap: 10px; color: #fab1a0; }
+        .order-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .order-card { background: #353b48; border-radius: 15px; padding: 18px; border-left: 10px solid #ff7675; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: relative; }
+        .order-card.paid { border-left-color: #fdcb6e; }
+        .order-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #57606f; padding-bottom: 12px; margin-bottom: 12px; }
+        .table-num { font-size: 20px; font-weight: bold; color: #74b9ff; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 5px; }
+        .total-area { text-align: right; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #57606f; }
+        .total-price { color: #ffe66d; font-size: 22px; font-weight: bold; }
         
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 15px; }
-        button { padding: 10px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:active { transform: scale(0.95); }
         .pay-btn { background: #55efc4; color: #2d3436; }
-        .serve-btn { background: #0984e3; color: white; } /* 已出餐按鈕 */
+        .serve-btn { background: #0984e3; color: white; grid-column: span 2; }
         .free-btn { background: #a29bfe; color: #2d3436; }
-        .status-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #ff7675; }
+        .status-tag { font-size: 12px; padding: 3px 10px; border-radius: 20px; background: #ff7675; font-weight: bold; }
         .status-tag.paid-tag { background: #fdcb6e; color: #333; }
     </style>
 </head>
 <body>
 
 <h1>🔔 BlingOrder 實時訂單監控</h1>
-<div id="authNotice" style="background: #e17055; padding: 10px; margin-bottom: 20px; border-radius: 8px;">
-    📢 瀏覽器限制：請先「點擊頁面任何處」以開啟語音通知功能。
+<div id="authNotice" style="background: #e17055; padding: 15px; margin-bottom: 20px; border-radius: 10px; cursor: pointer; text-align: center; font-weight: bold;">
+    👉 為了啟用「語音通知」，請先點擊我一下 👈
 </div>
 
 <div class="order-container" id="orderList">
@@ -48,65 +51,72 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // --- 1. 語音功能 ---
     let voiceEnabled = false;
-    document.body.onclick = () => {
-        if(!voiceEnabled) {
-            speak("系統啟動，語音通知已就緒");
-            document.getElementById('authNotice').style.display = 'none';
-            voiceEnabled = true;
-        }
+    document.getElementById('authNotice').onclick = function() {
+        speak("語音系統已啟動");
+        this.style.display = 'none';
+        voiceEnabled = true;
     };
 
     function speak(text) {
+        if (!window.speechSynthesis) return;
         const msg = new SpeechSynthesisUtterance(text);
         msg.lang = 'zh-TW';
-        msg.rate = 1;
         window.speechSynthesis.speak(msg);
     }
 
-    // --- 2. 監聽訂單 ---
+    // 監聽訂單
     database.ref('orders').on('value', (snapshot) => {
         const list = document.getElementById('orderList');
         const data = snapshot.val();
         
-        // 檢查是否有新訂單 (比對數量)
-        const currentOrderCount = document.querySelectorAll('.order-card').length;
-        const newOrderCount = data ? Object.keys(data).length : 0;
-        if(newOrderCount > currentOrderCount && voiceEnabled) {
-            speak("您有新訂單！");
+        // 語音提醒邏輯
+        const currentCount = document.querySelectorAll('.order-card').length;
+        if(data && Object.keys(data).length > currentCount && voiceEnabled) {
+            speak("有新訂單進來囉！");
         }
 
         list.innerHTML = "";
-        if(!data) return;
+        if(!data) {
+            list.innerHTML = "<p>目前沒有新訂單</p>";
+            return;
+        }
 
         Object.keys(data).reverse().forEach(key => {
             const order = data[key];
-            
-            // 如果狀態是「已出餐」，則不顯示在清單中
             if(order.status === "已出餐") return;
 
-            const isPaid = order.status === "已結帳" || order.status === "招待免單";
+            const isPaid = (order.status === "已結帳" || order.status === "招待免單");
             
+            // 關鍵修復：處理 V2 的餐點資料結構
             let itemsHtml = "";
-            order.items.forEach(item => {
-                itemsHtml += `<div class="item-row"><span>${item.name} x${item.count}</span><span>$${item.price * item.count}</span></div>`;
-            });
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    // 使用 item.name 或 item.itemName (增加相容性)
+                    const name = item.name || item.itemName || "未知餐點";
+                    const price = item.price || 0;
+                    const count = item.count || 1;
+                    itemsHtml += `<div class="item-row"><span>${name} x${count}</span><span>$${price * count}</span></div>`;
+                });
+            }
 
             const html = `
                 <div class="order-card ${isPaid ? 'paid' : ''}">
                     <div class="order-header">
-                        <span>桌號：${order.table || '外帶'}</span>
-                        <span class="status-tag ${isPaid ? 'paid-tag' : ''}">${order.status}</span>
+                        <span class="table-num">桌號：${order.table || '外帶'}</span>
+                        <span class="status-tag ${isPaid ? 'paid-tag' : ''}">${order.status || '待處理'}</span>
                     </div>
                     <div class="items-area">${itemsHtml}</div>
-                    <div class="total-price">總計：$${order.total}</div>
+                    <div class="total-area">
+                        <span style="font-size:14px; color:#aaa;">總金額</span><br>
+                        <span class="total-price">$${order.total || 0}</span>
+                    </div>
                     <div class="btn-group">
                         ${!isPaid ? `
                             <button class="pay-btn" onclick="updateStatus('${key}', '已結帳')">💰 已結帳</button>
                             <button class="free-btn" onclick="handleFree('${key}')">🎁 招待免單</button>
                         ` : `
-                            <button class="serve-btn" style="grid-column: span 2;" onclick="updateStatus('${key}', '已出餐')">✅ 已出餐 (結案)</button>
+                            <button class="serve-btn" onclick="updateStatus('${key}', '已出餐')">✅ 已出餐 (結案)</button>
                         `}
                     </div>
                 </div>
@@ -115,18 +125,13 @@
         });
     });
 
-    // 更新狀態 (結帳或出餐)
     function updateStatus(key, newStatus) {
         database.ref('orders/' + key).update({ status: newStatus });
     }
 
-    // --- 3. 招待免單防呆 ---
     function handleFree(key) {
-        if(confirm("❗ 確定要將此訂單設為「招待免單」嗎？\n這會將金額計為 0 並進入待出餐狀態。")) {
-            database.ref('orders/' + key).update({ 
-                status: "招待免單",
-                total: 0
-            });
+        if(confirm("確定要這單免費招待嗎？")) {
+            database.ref('orders/' + key).update({ status: "招待免單", total: 0 });
         }
     }
 </script>
