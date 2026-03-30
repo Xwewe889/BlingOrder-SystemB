@@ -2,25 +2,40 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 菜單管理 V2</title>
+    <title>BlingOrder | 菜單管理 V2.1</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 15px; max-width: 600px; margin: auto; }
-        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { background: #ff85a2; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; }
-        .item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+        .container { background: white; padding: 20px; border-radius: 15px; max-width: 700px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        input, textarea, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .full-width { grid-column: span 2; }
+        button { background: #ff85a2; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .item-list { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .item-card { background: #fffafb; padding: 10px; border: 1px solid #fce7f3; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .cat-tag { font-size: 10px; background: #9b87f5; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>🟣 菜單管理 V2 (含備註)</h2>
-        <input type="text" id="name" placeholder="餐點名稱">
-        <input type="number" id="price" placeholder="價格">
-        <textarea id="note" placeholder="餐點詳細介紹 (會顯示在詳情彈窗)"></textarea>
-        <button onclick="addItem()">上架餐點</button>
-        <div id="list" style="margin-top:20px;"></div>
+        <h2 style="color:#ff85a2; text-align:center;">🟣 菜單進階管理 (V2.1)</h2>
+        <div class="form-grid">
+            <input type="text" id="name" placeholder="餐點名稱">
+            <input type="number" id="price" placeholder="價格">
+            <select id="category">
+                <option value="昭和小食">昭和小食</option>
+                <option value="飲品">飲品</option>
+                <option value="甜點">甜點</option>
+                <option value="炸物">炸物</option>
+                <option value="其他">其他</option>
+            </select>
+            <input type="text" id="image" placeholder="圖片連結 (URL)">
+            <textarea id="note" class="full-width" placeholder="餐點介紹 (會顯示在詳情彈窗)"></textarea>
+        </div>
+        <button onclick="addItem()">正式上架到 V2 菜單</button>
+
+        <div id="list" class="item-list"></div>
     </div>
 
     <script>
@@ -35,19 +50,34 @@
         const db = firebase.database();
 
         function addItem() {
-            const name = document.getElementById('name').value;
-            const price = document.getElementById('price').value;
-            const note = document.getElementById('note').value;
-            if(!name || !price) return alert('必填');
-            db.ref('menu_v2').push({ name, price: parseInt(price), note });
-            document.getElementById('name').value=''; document.getElementById('price').value=''; document.getElementById('note').value='';
+            const data = {
+                name: document.getElementById('name').value,
+                price: parseInt(document.getElementById('price').value),
+                category: document.getElementById('category').value,
+                image: document.getElementById('image').value,
+                note: document.getElementById('note').value
+            };
+            if(!data.name || !data.price) return alert('名稱與價格必填');
+            db.ref('menu_v2').push(data).then(() => {
+                alert('上架成功！');
+                document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+            });
         }
 
         db.ref('menu_v2').on('value', snap => {
             const list = document.getElementById('list');
-            list.innerHTML = '<h3>目前菜單</h3>';
+            list.innerHTML = '<h3>目前已上架</h3>';
             snap.forEach(child => {
-                list.innerHTML += `<div class="item"><span>${child.val().name} ($${child.val().price})</span> <a href="#" onclick="db.ref('menu_v2/${child.key}').remove()" style="color:red;">刪除</a></div>`;
+                const item = child.val();
+                list.innerHTML += `
+                    <div class="item-card">
+                        <div>
+                            <span class="cat-tag">${item.category}</span>
+                            <b>${item.name}</b> ($${item.price})
+                        </div>
+                        <button onclick="db.ref('menu_v2/${child.key}').remove()" style="width:auto; padding:5px 10px; background:#ff5f6d;">刪除</button>
+                    </div>
+                `;
             });
         });
     </script>
