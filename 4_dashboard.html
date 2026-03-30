@@ -7,44 +7,71 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f5f3ff; padding: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .card { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .val { font-size: 24px; font-weight: bold; color: #9b87f5; }
-        .chart-box { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; height: 350px; }
+        .val { font-size: 24px; font-weight: bold; color: var(--p-purple); margin-top: 5px; }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        select { padding: 8px; border-radius: 8px; border: 1px solid var(--p-purple); }
     </style>
 </head>
 <body>
-    <h2 style="color:#9b87f5; text-align:center;">💎 4.數據決策中心 (V2)</h2>
+    <h2 style="color:var(--p-purple); text-align:center;">💎 4.經營決策中心 (V2)</h2>
     <div class="grid">
-        <div class="card">今日實收<div class="val" id="t-real">$ 0</div></div>
-        <div class="card">昨日實收<div class="val" id="y-real">$ 0</div></div>
-        <div class="card">本月累計<div class="val" id="m-real">$ 0</div></div>
-        <div class="card">歷史總計<div class="val" id="all-real">$ 0</div></div>
+        <div class="card">本日實收營收<div class="val" id="t-real">$ 0</div></div>
+        <div class="card">昨日實收營收<div class="val" id="y-real">$ 0</div></div>
+        <div class="card">本月累計實收<div class="val" id="m-real">$ 0</div></div>
+        <div class="card">歷史總實收<div class="val" id="all-real">$ 0</div></div>
     </div>
-    <div class="chart-box"><canvas id="trendChart"></canvas></div>
+    <div class="chart-container">
+        <div class="chart-header">
+            <h3 style="margin:0;">📈 營業額走勢與平均線</h3>
+            <select id="trend-range" onchange="renderCharts()">
+                <option value="7">最近一週</option><option value="30" selected>最近一月</option>
+                <option value="90">最近一季</option><option value="365">最近一年</option>
+            </select>
+        </div>
+        <div style="height: 350px;"><canvas id="trendChart"></canvas></div>
+    </div>
     <script>
         const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database();
-        let trendChart;
-        db.ref('orders_v2').on('value', snap => {
-            const data = snap.val()||{}; const now = new Date(); const today = now.toLocaleDateString('zh-TW');
+        let trendChart; let globalData = {};
+        db.ref('orders_v2').on('value', snap => { globalData = snap.val() || {}; renderCharts(); });
+        function renderCharts() {
+            const now = new Date(); const todayStr = now.toLocaleDateString('zh-TW');
+            const yesterday = new Date(); yesterday.setDate(now.getDate()-1); const yestStr = yesterday.toLocaleDateString('zh-TW');
             let tr=0, yr=0, mr=0, ar=0; let daily={};
-            Object.values(data).forEach(o => {
-                const d = new Date(o.timestamp); const dStr = d.toLocaleDateString('zh-TW');
-                if(o.payStatus!=='免單'){
-                    ar+=o.totalAmount; if(dStr===today) tr+=o.totalAmount;
-                    if(d.getMonth()===now.getMonth()) mr+=o.totalAmount;
-                    daily[dStr] = (daily[dStr]||0) + o.totalAmount;
+            Object.values(globalData).forEach(o => {
+                const amount = parseInt(o.totalAmount||0); const d = new Date(o.timestamp); const dStr = d.toLocaleDateString('zh-TW');
+                if(o.payStatus !== "免單") {
+                    ar += amount; if(dStr === todayStr) tr += amount; if(dStr === yestStr) yr += amount;
+                    if(d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) mr += amount;
+                    daily[dStr] = (daily[dStr]||0) + amount;
                 }
             });
-            document.getElementById('t-real').innerText='$'+tr; document.getElementById('all-real').innerText='$'+ar;
-            // 圖表邏輯 (簡化顯示最近7天)
-            const labels = Object.keys(daily).sort().slice(-7);
+            document.getElementById('t-real').innerText = '$ '+tr.toLocaleString(); document.getElementById('y-real').innerText = '$ '+yr.toLocaleString();
+            document.getElementById('m-real').innerText = '$ '+mr.toLocaleString(); document.getElementById('all-real').innerText = '$ '+ar.toLocaleString();
+            
+            const range = parseInt(document.getElementById('trend-range').value);
+            const labels = []; const dataVal = []; const avgVal = [];
+            for(let i=range-1; i>=0; i--) {
+                const d = new Date(); d.setDate(d.getDate()-i); const s = d.toLocaleDateString('zh-TW');
+                labels.push(s.split('/')[1]+'/'+s.split('/')[2]); dataVal.push(daily[s]||0);
+            }
+            const avg = dataVal.reduce((a,b)=>a+b,0)/dataVal.length;
+            labels.forEach(()=>avgVal.push(avg.toFixed(0)));
             const ctx = document.getElementById('trendChart').getContext('2d');
             if(trendChart) trendChart.destroy();
-            trendChart = new Chart(ctx, { type:'line', data:{ labels, datasets:[{label:'每日營業額', data:labels.map(l=>daily[l]), borderColor:'#9b87f5'}] }});
-        });
+            trendChart = new Chart(ctx, {
+                type:'line', data:{ labels, datasets:[
+                    {label:'每日營業額', data:dataVal, borderColor:'#9b87f5', fill:true, backgroundColor:'rgba(155,135,245,0.1)', tension:0.4},
+                    {label:'平均線', data:avgVal, borderColor:'#ff85a2', borderDash:[5,5], pointRadius:0}
+                ]}, options: { responsive:true, maintainAspectRatio:false }
+            });
+        }
     </script>
 </body>
 </html>

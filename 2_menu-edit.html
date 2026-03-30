@@ -6,24 +6,35 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f5f3ff; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 20px; }
-        .form-group { background: #fff5f7; padding: 20px; border-radius: 15px; border: 2px solid #9b87f5; margin-bottom: 20px; }
-        .input-row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 10px; margin-bottom: 10px; }
-        input, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .item-row { display: grid; grid-template-columns: 60px 1.5fr 1fr 1fr 2fr 200px; gap: 10px; padding: 15px; border-bottom: 1px solid #eee; align-items: center; }
-        .btn-main { background: #9b87f5; color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 #7b6ac5; }
-        .btn-op { border: none; padding: 8px 12px; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; margin-right: 5px; box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; --dark-pink: #ff85a2; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .form-group { background: #fff; padding: 20px; border-radius: 15px; border: 2px solid var(--p-purple); margin-bottom: 30px; }
+        .input-row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 15px; margin-bottom: 15px; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        .cat-btn { background: white; color: var(--p-purple); border: 2px solid var(--p-purple); padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; margin-right: 5px; transition: 0.2s; }
+        .cat-btn:hover { background: var(--p-purple); color: white; }
+        .btn-main { background: linear-gradient(145deg, #a692ff, #8b79dd); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; box-shadow: 0 6px 0 #7b6ac5; }
+        .btn-main:active { transform: translateY(4px); box-shadow: 0 2px 0 #7b6ac5; }
+        .btn-update-mode { background: linear-gradient(145deg, var(--dark-pink), #e91e63) !important; box-shadow: 0 6px 0 #d81b60 !important; }
+        .item-row { display: grid; grid-template-columns: 70px 1.5fr 1fr 1fr 2fr 220px; gap: 10px; padding: 15px; background: white; border-radius: 12px; margin-bottom: 10px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .sold-out-status { opacity: 0.5; background: #fafafa; }
+        .op-btn { border: none; padding: 10px 15px; border-radius: 8px; color: white; font-size: 12px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 rgba(0,0,0,0.2); margin-right: 5px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 style="color:#9b87f5;">🟣 2.菜單管理 (V2)</h2>
+        <h2>🟣 2.菜單管理 (立體視覺 V2)</h2>
         <div class="form-group">
             <h3 id="mode-text">新增餐點</h3>
-            <div class="input-row"><input type="text" id="name" placeholder="名稱"><input type="number" id="price" placeholder="價格"><input type="text" id="cat" placeholder="類別"><input type="text" id="img" placeholder="圖片路徑"></div>
-            <textarea id="note" placeholder="介紹..."></textarea><input type="hidden" id="edit-id">
-            <button id="sub-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單</button>
+            <div class="input-row">
+                <input type="text" id="name" placeholder="名稱"><input type="number" id="price" placeholder="價格">
+                <input type="text" id="cat" placeholder="類別"><input type="text" id="img" placeholder="圖片路徑">
+            </div>
+            <div id="cat-helper" style="margin-bottom:10px;"></div>
+            <textarea id="note" rows="2" placeholder="餐點詳細介紹..."></textarea><input type="hidden" id="edit-id">
+            <button id="sub-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單庫</button>
+            <button id="cancel-btn" style="display:none; background:#ccc; margin-top:15px; box-shadow:0 4px 0 #aaa;" class="btn-main" onclick="resetForm()">取消修改</button>
         </div>
         <div id="list-content"></div>
     </div>
@@ -31,18 +42,28 @@
         const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
         firebase.initializeApp(firebaseConfig); const db = firebase.database(); let allM = {};
         function handleSubmit(){
-            const id=document.getElementById('edit-id').value; const data={ name:document.getElementById('name').value, price:parseInt(document.getElementById('price').value), category:document.getElementById('cat').value, image:document.getElementById('img').value, note:document.getElementById('note').value, isSoldOut:id?allM[id].isSoldOut:false };
-            if(id) db.ref('menu_v2/'+id).update(data).then(reset); else db.ref('menu_v2').push(data).then(reset);
+            const id=document.getElementById('edit-id').value; const data={ name:document.getElementById('name').value, price:parseInt(document.getElementById('price').value), category:document.getElementById('cat').value||'未分類', image:document.getElementById('img').value, note:document.getElementById('note').value, isSoldOut:id?allM[id].isSoldOut:false };
+            if(!data.name||!data.price) return alert('必填');
+            if(id) db.ref('menu_v2/'+id).update(data).then(resetForm); else db.ref('menu_v2').push(data).then(resetForm);
         }
-        function reset(){ document.querySelectorAll('input,textarea').forEach(i=>i.value=''); document.getElementById('edit-id').value=''; document.getElementById('mode-text').innerText="新增餐點"; }
+        function resetForm(){ document.querySelectorAll('input,textarea').forEach(i=>i.value=''); document.getElementById('edit-id').value=''; document.getElementById('mode-text').innerText="新增餐點"; document.getElementById('sub-btn').classList.remove('btn-update-mode'); document.getElementById('cancel-btn').style.display='none'; }
         db.ref('menu_v2').on('value', snap => {
-            const list = document.getElementById('list-content'); list.innerHTML = ''; allM = snap.val() || {};
-            Object.keys(allM).forEach(id => { const i = allM[id]; list.innerHTML += `<div class="item-row">
-                <img src="${i.image}" style="width:45px; height:45px; object-fit:cover; border-radius:5px;"><div style="font-weight:bold;">${i.name}</div><div>${i.category}</div><div>$${i.price}</div><div style="font-size:12px; color:#888;">${i.note||''}</div>
-                <div><button class="btn-op" style="background:#4CAF50;" onclick="startEdit('${id}')">改</button><button class="btn-op" style="background:#ff5f6d;" onclick="db.ref('menu_v2/${id}').remove()">刪</button>
-                <button class="btn-op" style="background:#9b87f5;" onclick="db.ref('menu_v2/${id}').update({isSoldOut:!i.isSoldOut})">${i.isSoldOut?'🔴售完':'🟢在售'}</button></div></div>`; });
+            const list = document.getElementById('list-content'); const helper = document.getElementById('cat-helper'); list.innerHTML = ''; helper.innerHTML = '';
+            allM = snap.val() || {}; let cats = new Set();
+            Object.keys(allM).forEach(id => {
+                const i = allM[id]; if(i.category) cats.add(i.category); const isSold = i.isSoldOut||false;
+                list.innerHTML += `<div class="item-row ${isSold?'sold-out-status':''}">
+                    <img src="${i.image}" style="width:55px; height:55px; object-fit:cover; border-radius:10px;" onerror="this.src='https://via.placeholder.com/55'">
+                    <div><b>${i.name}</b></div><div style="color:var(--p-purple); font-weight:bold;">${i.category}</div><div>$${i.price}</div>
+                    <div style="font-size:12px; color:#888;">${i.note||''}</div>
+                    <div style="text-align:right;"><button class="op-btn" style="background:#4CAF50; box-shadow:0 4px 0 #3e8e41;" onclick="startEdit('${id}')">修改</button>
+                    <button class="op-btn" style="background:#ff5f6d; box-shadow:0 4px 0 #d9534f;" onclick="if(confirm('刪除？'))db.ref('menu_v2/${id}').remove()">刪</button>
+                    <button class="op-btn" style="background:#9b87f5; box-shadow:0 4px 0 #7b6ac5; min-width:90px; ${isSold?'background:#aaa;box-shadow:0 4px 0 #888;':''}" onclick="db.ref('menu_v2/${id}').update({isSoldOut:!isSold})">${isSold?'🔴售完':'🟢在售'}</button></div></div>`;
+            });
+            cats.forEach(c => { helper.innerHTML += `<button class="cat-btn" onclick="document.getElementById('cat').value='${c}'">${c}</button>`; });
         });
-        function startEdit(id){ const i=allM[id]; document.getElementById('edit-id').value=id; document.getElementById('name').value=i.name; document.getElementById('price').value=i.price; document.getElementById('cat').value=i.category; document.getElementById('img').value=i.image; document.getElementById('note').value=i.note; document.getElementById('mode-text').innerText="修改："+i.name; }
+        function startEdit(id){ const i=allM[id]; document.getElementById('edit-id').value=id; document.getElementById('name').value=i.name; document.getElementById('price').value=i.price; document.getElementById('cat').value=i.category; document.getElementById('img').value=i.image; document.getElementById('note').value=i.note; 
+            document.getElementById('mode-text').innerText="正在修改："+i.name; document.getElementById('sub-btn').classList.add('btn-update-mode'); document.getElementById('cancel-btn').style.display='block'; window.scrollTo(0,0); }
     </script>
 </body>
 </html>
