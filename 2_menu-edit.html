@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder - 菜單管理 V2 (修復版)</title>
+    <title>BlingOrder - 菜單管理 V2 (網址校正版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-storage-compat.js"></script>
@@ -13,14 +13,13 @@
         h2 { color: #6c5ce7; margin-bottom: 20px; border-left: 5px solid #6c5ce7; padding-left: 15px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; transition: 0.3s; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .upload-area:hover { background: #f0eeff; }
+        .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .upload-area input[type="file"] { position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer; }
         .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
         .submit-btn { width: 100%; padding: 15px; background: #6c5ce7; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .submit-btn:hover { background: #5649c0; }
         .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
-        .status-msg { margin-top: 15px; font-size: 14px; color: #6c5ce7; font-weight: bold; text-align: center; white-space: pre-line; }
+        .status-msg { margin-top: 15px; font-size: 14px; color: #6c5ce7; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -34,10 +33,9 @@
         <input type="text" id="itemCategory" placeholder="類別 (如：咖啡、小食)">
     </div>
 
-    <div class="upload-area" id="dropZone">
+    <div class="upload-area">
         <div id="uploadPrompt">
             <p style="margin:0; font-size: 16px; color: #6c5ce7;">📷 點擊或拖曳圖片上傳</p>
-            <p style="margin:5px 0 0; font-size: 12px; color: #aaa;">支援 JPG, PNG (建議 2MB 以下)</p>
         </div>
         <input type="file" id="imageInput" accept="image/*">
         <img id="preview" class="preview-img">
@@ -47,17 +45,17 @@
     <textarea id="itemDesc" rows="3" placeholder="餐點詳細介紹 (選填)..."></textarea>
     
     <button class="submit-btn" id="saveBtn" onclick="saveToFirebase()">正式上架到 V2 菜單庫</button>
-    <div id="status" class="status-msg">等待操作中...</div>
+    <div id="status" class="status-msg"></div>
 </div>
 
 <script>
-    // --- 1. Firebase 配置 ---
+    // --- 關鍵修改：已根據你的截圖將 storageBucket 改為 blingorder.firebasestorage.app ---
     const firebaseConfig = { 
         apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
         authDomain: "blingorder.firebaseapp.com", 
         projectId: "blingorder", 
         databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
-        storageBucket: "blingorder.appspot.com", 
+        storageBucket: "blingorder.firebasestorage.app", 
         appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
     };
 
@@ -65,98 +63,64 @@
     const database = firebase.database();
     const storage = firebase.storage();
 
-    // --- 2. 變數設定 ---
     const imageInput = document.getElementById('imageInput');
-    const uploadPrompt = document.getElementById('uploadPrompt');
     const preview = document.getElementById('preview');
+    const uploadPrompt = document.getElementById('uploadPrompt');
     const imageUrlField = document.getElementById('imageUrl');
     const saveBtn = document.getElementById('saveBtn');
     const statusDiv = document.getElementById('status');
 
-    // --- 3. 圖片上傳處理 ---
     imageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
-        // 預覽圖片
         preview.src = URL.createObjectURL(file);
         preview.style.display = 'block';
         uploadPrompt.style.display = 'none';
         
-        statusDiv.innerText = "🚀 正在連線至 Firebase Storage...";
-        statusDiv.style.color = "#6c5ce7";
+        statusDiv.innerText = "🚀 正在傳輸到：" + firebaseConfig.storageBucket;
         saveBtn.disabled = true;
 
-        // 產生不重複檔名
         const fileName = 'menu_' + Date.now() + '_' + file.name;
         const storageRef = storage.ref().child('menu_images/' + fileName);
 
-        // 開始上傳
-        const uploadTask = storageRef.put(file);
-
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                // 計算進度
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                statusDiv.innerText = "🚀 上傳中: " + Math.round(progress) + "%";
-            }, 
-            (error) => {
-                // 錯誤處理
-                console.error("詳細錯誤訊息:", error);
-                let msg = "❌ 上傳失敗\n";
-                if (error.code === 'storage/unauthorized') {
-                    msg += "原因：Firebase 規則未發佈或權限遭拒。";
-                } else if (error.code === 'storage/canceled') {
-                    msg += "原因：上傳被取消。";
-                } else {
-                    msg += "原因：" + error.message;
-                }
-                statusDiv.innerText = msg;
-                statusDiv.style.color = "red";
-                saveBtn.disabled = false;
-            }, 
-            () => {
-                // 上傳成功
-                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                    imageUrlField.value = downloadURL;
-                    statusDiv.innerText = "✅ 圖片上傳完成！可以點擊下方按鈕上架。";
-                    statusDiv.style.color = "green";
-                    saveBtn.disabled = false;
-                });
-            }
-        );
+        storageRef.put(file).then((snapshot) => {
+            return snapshot.ref.getDownloadURL();
+        }).then((downloadURL) => {
+            imageUrlField.value = downloadURL;
+            statusDiv.innerText = "✅ 圖片連線成功！";
+            saveBtn.disabled = false;
+        }).catch((error) => {
+            console.error(error);
+            statusDiv.innerText = "❌ 失敗：" + error.message;
+            saveBtn.disabled = false;
+        });
     });
 
-    // --- 4. 儲存資料 ---
     function saveToFirebase() {
         const name = document.getElementById('itemName').value;
         const price = document.getElementById('itemPrice').value;
-        const category = document.getElementById('itemCategory').value;
-        const desc = document.getElementById('itemDesc').value;
         const url = document.getElementById('imageUrl').value;
 
         if (!name || !price || !url) {
-            alert("請填寫名稱、價格，並等待圖片上傳完成。");
+            alert("請填寫名稱、價格，並確認圖片已上傳成功（顯示綠色打勾）。");
             return;
         }
 
         const menuData = {
             name: name,
             price: parseInt(price),
-            category: category || "未分類",
-            description: desc,
+            category: document.getElementById('itemCategory').value || "未分類",
+            description: document.getElementById('itemDesc').value,
             image: url,
             status: "在售",
             updateTime: new Date().toLocaleString()
         };
 
-        statusDiv.innerText = "💾 正在同步資料至資料庫...";
-
         database.ref('menu_v2_beta').push(menuData)
             .then(() => {
-                statusDiv.innerText = "🎉 餐點已成功上架！";
-                statusDiv.style.color = "green";
-                // 清空
+                statusDiv.innerText = "🎉 資料已存入 menu_v2_beta！";
+                // 重置
                 document.getElementById('itemName').value = "";
                 document.getElementById('itemPrice').value = "";
                 document.getElementById('itemDesc').value = "";
@@ -164,12 +128,8 @@
                 preview.style.display = 'none';
                 uploadPrompt.style.display = 'block';
                 imageUrlField.value = "";
-                imageInput.value = "";
             })
-            .catch(err => {
-                statusDiv.innerText = "❌ 資料庫寫入失敗：" + err.message;
-                statusDiv.style.color = "red";
-            });
+            .catch(err => alert("寫入失敗：" + err.message));
     }
 </script>
 
