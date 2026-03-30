@@ -14,6 +14,7 @@
             background-image: url('../images/retro/retro_pattern_bg.png');
             background-repeat: repeat;
             margin: 0; padding-bottom: 150px; color: #3d2b1f;
+            overflow-x: hidden;
         }
 
         /* 1. 招牌 Banner */
@@ -24,11 +25,11 @@
             z-index: 1;
         }
 
-        /* 2. 分類吧：強制上移，對齊 Banner 底部 */
+        /* 2. 分類吧容器：強制上移，介於 Banner 與壁紙交界 */
         .category-container {
-            margin: -35px 0 30px; /* 向上移動，貼近 Banner */
+            margin: -40px 0 35px; 
             display: flex; justify-content: center; align-items: center;
-            position: relative; height: 110px; z-index: 10;
+            position: relative; height: 100px; z-index: 10;
             width: 100%;
         }
 
@@ -40,41 +41,52 @@
             background-size: auto 100%; z-index: 1;
         }
 
-        /* 電話：鎖定寬度，絕對定位在左側 */
+        /* 電話：鎖定尺寸，絕對定位在左 */
         .deco-phone {
-            position: absolute; left: 5px; top: 50%; 
+            position: absolute; left: 8px; top: 50%; 
             transform: translateY(-50%);
-            width: 95px; /* 確保夠大 */
-            height: auto;
-            z-index: 15; /* 壓在橫桿上 */
-            filter: drop-shadow(6px 8px 12px rgba(0,0,0,0.7));
+            width: 90px; /* 尺寸與打字機一致 */
+            z-index: 15; filter: drop-shadow(6px 8px 12px rgba(0,0,0,0.7));
         }
 
-        /* 打字機：鎖定寬度，絕對定位在右側 */
+        /* 打字機：鎖定尺寸，絕對定位在右 */
         .deco-typewriter {
-            position: absolute; right: 5px; top: 50%; 
-            transform: translateY(-60%);
-            width: 95px; /* 確保夠大 */
-            height: auto;
-            z-index: 15; /* 壓在橫桿上 */
-            filter: drop-shadow(6px 8px 12px rgba(0,0,0,0.7));
+            position: absolute; right: 8px; top: 50%; 
+            transform: translateY(-55%);
+            width: 90px; /* 尺寸與電話一致 */
+            z-index: 15; filter: drop-shadow(6px 8px 12px rgba(0,0,0,0.7));
         }
 
-        /* 中間鐵牌：獨立層次，確保對齊橫桿 */
+        /* 中間鐵牌：三段式拼接防止螺絲變形 */
         .category-badge {
             position: relative; z-index: 20; 
-            display: inline-flex; height: 55px;
+            display: flex; height: 55px; /* 縮小高度對齊橫桿 */
             filter: drop-shadow(8px 10px 15px rgba(0,0,0,0.6));
-            margin-top: 2px; /* 微調對齊橫桿中心線 */
+            margin-top: 2px;
         }
-        .cat-left { width: 30px; background: url('../images/retro/category_left.png') no-repeat; background-size: 100% 100%; }
+        
+        /* 螺絲左：鎖死寬度，確保不扭曲 */
+        .cat-left { 
+            width: 32px; flex-shrink: 0;
+            background: url('../images/retro/category_left.png') no-repeat center; 
+            background-size: 100% 100%; 
+        }
+        
+        /* 中間：文字區，負責橫向重複 */
         .cat-mid { 
-            background: url('../images/retro/category_mid.png') repeat-x; background-size: auto 100%; 
-            padding: 0 10px; display: flex; align-items: center; justify-content: center;
+            background: url('../images/retro/category_mid.png') repeat-x center; 
+            background-size: auto 100%; 
+            padding: 0 12px; display: flex; align-items: center; justify-content: center;
             color: #3d2b1f; font-weight: bold; font-size: 18px; letter-spacing: 1px;
-            white-space: nowrap; min-width: 80px;
+            white-space: nowrap;
         }
-        .cat-right { width: 30px; background: url('../images/retro/category_right.png') no-repeat; background-size: 100% 100%; }
+        
+        /* 螺絲右：鎖死寬度，確保不扭曲 */
+        .cat-right { 
+            width: 32px; flex-shrink: 0;
+            background: url('../images/retro/category_right.png') no-repeat center; 
+            background-size: 100% 100%; 
+        }
 
         /* 菜單網格佈局 */
         .menu-grid {
