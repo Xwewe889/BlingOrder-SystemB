@@ -1,138 +1,56 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 接單看板 (數據修復版)</title>
+    <title>BlingOrder | 接單看板 V2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: 'Microsoft JhengHei', sans-serif; background: #fdf2f8; margin: 0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 15px; border-bottom: 3px solid #fbcfe8; margin-bottom: 20px; }
-        .order-card { background: white; border-radius: 12px; padding: 20px; display: flex; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
-        .table-area { min-width: 120px; text-align: center; border-right: 2px solid #fbcfe8; margin-right: 20px; }
-        .table-no { font-size: 45px; font-weight: bold; color: #db2777; }
-        .content-area { flex-grow: 1; display: flex; flex-wrap: wrap; gap: 10px; }
-        .item-row { background: #fff5f7; border: 1px solid #fce7f3; border-radius: 8px; padding: 12px; width: calc(33.3% - 10px); }
-        .btn-group { min-width: 150px; display: flex; flex-direction: column; gap: 10px; }
-        button { font-size: 20px; padding: 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-pay { background: #fbbf24; }
-        .btn-pay.done { background: #eee; color: #999; }
-        .btn-ship { background: #10b981; color: white; }
-        #curtain { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(253,242,248,0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; }
-        .curtain-btn { padding: 40px 80px; font-size: 36px; background: #db2777; color: white; border-radius: 20px; border: none; }
+        body { font-family: sans-serif; background: #f0ebff; padding: 20px; }
+        .order-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; border-left: 10px solid #9b87f5; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .btn-pay { background: #4CAF50; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-free { background: #9b87f5; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 10px; }
     </style>
 </head>
 <body>
-    <div id="curtain"><button class="curtain-btn" onclick="startSystem()">💎 啟動語音接單系統</button></div>
-    <div class="header">
-        <h1 style="color:#db2777">BlingOrder 接單看板</h1>
-        <div id="dailySales" style="font-size: 24px; font-weight: bold; background: #333; color: #fff; padding: 10px 20px; border-radius: 30px;">今日：$ 0</div>
-    </div>
-    <div id="orderBoard"></div>
+    <h2 style="color:#6a5acd">💎 BlingOrder 收單中心 V2</h2>
+    <div id="orders-list"></div>
 
     <script>
-        const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let lastCount = -1;
 
-        function speak(text) {
-            const synth = window.speechSynthesis;
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.lang = 'zh-TW'; utter.rate = 1.0; synth.speak(utter);
-        }
-
-        function startSystem() {
-            document.getElementById('curtain').style.display = 'none';
-            speak('系統已啟動');
-            loadOrders();
-        }
-
-        function loadOrders() {
-            // 監聽待處理訂單
-            db.ref('orders').orderByChild('status').equalTo('待處理').on('value', snap => {
-                const currentCount = snap.numChildren();
-                if (lastCount !== -1 && currentCount > lastCount) { speak('您有新訂單'); }
-                lastCount = currentCount;
-
-                const board = document.getElementById('orderBoard');
-                board.innerHTML = '';
-                
-                snap.forEach(orderSnap => {
-                    const order = orderSnap.val();
-                    const orderId = orderSnap.key;
-                    
-                    // 金額修復邏輯：不直接信任 totalPrice，而是重新計算 items
-                    let correctedPrice = 0;
-                    if (order.items) {
-                        order.items.forEach(item => {
-                            correctedPrice += Number(item.price || 0);
-                        });
-                    } else {
-                        correctedPrice = Number(order.totalPrice || 0);
-                    }
-
-                    let itemsMap = {};
-                    if(order.items) {
-                        order.items.forEach(item => {
-                            const key = item.name;
-                            if(!itemsMap[key]) {
-                                itemsMap[key] = { name: item.name.split('(')[0], opt: item.name.includes('(') ? '('+item.name.split('(')[1] : '', qty: 0 };
-                            }
-                            itemsMap[key].qty++;
-                        });
-                    }
-
-                    let itemsHtml = Object.values(itemsMap).map(i => `
-                        <div class="item-row">
-                            <div style="font-size:22px;font-weight:bold">${i.name}</div>
-                            <div style="color:#db2777;font-weight:bold">${i.opt}</div>
-                            <div style="font-size:32px;font-weight:bold">× ${i.qty}</div>
-                        </div>
-                    `).join('');
-
-                    board.innerHTML += `
+        db.ref('orders_v2').on('value', snap => {
+            const orders = snap.val() || {};
+            const list = document.getElementById('orders-list');
+            list.innerHTML = '';
+            Object.keys(orders).reverse().forEach(id => {
+                const o = orders[id];
+                if(o.payStatus === "尚未結帳") {
+                    list.innerHTML += `
                         <div class="order-card">
-                            <div class="table-area">
-                                <div class="table-no">${order.table==="7"?"💎包廂":order.table+"桌"}</div>
-                                <div style="font-size:20px;font-weight:bold;margin-top:10px;">$ ${correctedPrice}</div>
+                            <div style="font-size:24px; font-weight:bold; color:#6a5acd">桌號：${o.tableId}</div>
+                            <div style="margin:10px 0; padding:10px; background:#f8f7ff; border-radius:5px;">
+                                ${o.items.map(i => i.name+' x1').join('<br>')}
                             </div>
-                            <div class="content-area">${itemsHtml}</div>
-                            <div class="btn-group">
-                                <button class="btn-pay ${order.payStatus==='已結帳'?'done':''}" 
-                                        onclick="db.ref('orders/${orderId}').update({payStatus:'已結帳'})"
-                                        ${order.payStatus==='已結帳'?'disabled':''}>
-                                    ${order.payStatus==='已結帳'?'已結帳':'結帳'}
-                                </button>
-                                <button class="btn-ship" onclick="db.ref('orders/${orderId}').update({status:'已完成'})">出餐</button>
-                            </div>
+                            <div style="font-size:18px; margin-bottom:15px;">總計：<b>$${o.totalAmount}</b></div>
+                            <button class="btn-pay" onclick="setPay('${id}', '已結帳')">結帳完成</button>
+                            <button class="btn-free" onclick="setPay('${id}', '免單')">✨ 免單招待</button>
                         </div>
                     `;
-                });
-                updateDailyRevenue();
+                }
             });
-        }
+        });
 
-        function updateDailyRevenue() {
-            const today = new Date().toLocaleDateString();
-            db.ref('orders').once('value', allSnap => {
-                let sTotal = 0;
-                allSnap.forEach(os => {
-                    const o = os.val();
-                    const oDate = new Date(o.timestamp).toLocaleDateString();
-                    if(oDate === today) {
-                        // 營收統計同步採用修復邏輯：重新加總 items 以防字串病毒
-                        let orderPrice = 0;
-                        if (o.items) {
-                            o.items.forEach(item => { orderPrice += Number(item.price || 0); });
-                        } else {
-                            orderPrice = Number(o.totalPrice || 0);
-                        }
-                        sTotal += orderPrice;
-                    }
-                });
-                document.getElementById('dailySales').innerText = `今日：$ ${sTotal.toLocaleString()}`;
-            });
+        function setPay(id, status) {
+            db.ref('orders_v2/'+id).update({ payStatus: status });
         }
     </script>
 </body>

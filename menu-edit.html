@@ -1,92 +1,65 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 菜單進階管理</title>
+    <title>BlingOrder | 菜單管理 V2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #fdf2f8; padding: 10px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 15px; border-radius: 15px; }
-        .form-group { background: #fff5f7; padding: 15px; border-radius: 12px; border: 1px solid #fce7f3; margin-bottom: 15px; }
-        .row1 { display: grid; grid-template-columns: 2fr 1fr 0.5fr 0.5fr 1.5fr; gap: 10px; margin-bottom: 10px; }
-        .row2 { display: flex; flex-wrap: wrap; gap: 10px; background: #fff; padding: 10px; border-radius: 5px; font-size: 13px; color: #db2777; }
-        .row2 label { display: flex; align-items: center; cursor: pointer; }
-        input[type="text"], input[type="number"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        .btn-save { background: #059669; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; width: 100px; }
-        .btn-add { background: #db2777; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
+        body { font-family: sans-serif; background: #fdfbff; padding: 20px; }
+        .edit-box { background: white; border: 2px solid #9b87f5; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        input, textarea { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
+        .btn-save { background: #9b87f5; color: white; border: none; padding: 10px 30px; border-radius: 8px; cursor: pointer; }
+        .item-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>💎 菜單進階管理 (含自訂選項)</h2>
-        <button class="btn-add" onclick="addNewItem()">＋ 新增品項</button>
-        <div id="menuList"></div>
+    <h2>🟣 菜單內容重製 (V2)</h2>
+    <div class="edit-box">
+        <h3>新增餐點</h3>
+        <input type="text" id="name" placeholder="餐點名稱">
+        <input type="number" id="price" placeholder="價格">
+        <textarea id="note" placeholder="餐點備註 (會顯示在詳情彈窗中)"></textarea>
+        <button class="btn-save" onclick="addMenu()">確認新增</button>
     </div>
+    <div id="menu-display"></div>
 
     <script>
-        const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const options = ["冰", "去冰", "熱", "無糖", "加糖", "五辛素", "蛋奶素", "輕微醺", "深微醺"];
+        function addMenu() {
+            const name = document.getElementById('name').value;
+            const price = document.getElementById('price').value;
+            const note = document.getElementById('note').value;
+            if(!name || !price) return alert('名稱與價格必填！');
+            db.ref('menu_v2').push({ name, price: parseInt(price), note });
+            document.getElementById('name').value = '';
+            document.getElementById('price').value = '';
+            document.getElementById('note').value = '';
+        }
 
-        function loadMenu() {
-            db.ref('menu').on('value', (snapshot) => {
-                const list = document.getElementById('menuList');
-                list.innerHTML = '';
-                snapshot.forEach((child) => {
-                    const item = child.val();
-                    const id = child.key;
-                    let optsHtml = options.map(opt => `
-                        <label><input type="checkbox" id="opt-${opt}-${id}" ${item.opts && item.opts[opt] ? 'checked' : ''}> ${opt}</label>
-                    `).join('');
-
-                    list.innerHTML += `
-                        <div class="form-group">
-                            <div class="row1">
-                                <div><label>完整名稱</label><input type="text" id="name-${id}" value="${item.name || ''}"></div>
-                                <div><label>簡稱</label><input type="text" id="short-${id}" value="${item.short_name || ''}"></div>
-                                <div><label>類別</label><input type="text" id="cat-${id}" value="${item.category || '飲料'}"></div>
-                                <div><label>金額</label><input type="number" id="price-${id}" value="${item.price || 0}"></div>
-                                <div><label>圖片網址</label><input type="text" id="img-${id}" value="${item.image || ''}"></div>
-                            </div>
-                            <div class="row2">
-                                <strong>顯示選項：</strong> ${optsHtml}
-                            </div>
-                            <div style="margin-top:10px; text-align:right;">
-                                <button class="btn-save" onclick="saveItem('${id}')">儲存</button>
-                                <button style="background:#dc2626; color:white; border:none; padding:10px; border-radius:5px;" onclick="deleteItem('${id}')">刪除</button>
-                            </div>
-                        </div>
-                    `;
-                });
+        db.ref('menu_v2').on('value', snap => {
+            const data = snap.val() || {};
+            const display = document.getElementById('menu-display');
+            display.innerHTML = '<h3>目前已上架餐點</h3>';
+            Object.keys(data).forEach(id => {
+                const item = data[id];
+                display.innerHTML += `
+                    <div class="item-card">
+                        <div><b>${item.name}</b> ($${item.price})</div>
+                        <button onclick="db.ref('menu_v2/${id}').remove()" style="color:red; background:none; border:none; cursor:pointer;">刪除</button>
+                    </div>
+                `;
             });
-        }
-
-        function saveItem(id) {
-            let selectedOpts = {};
-            options.forEach(opt => {
-                selectedOpts[opt] = document.getElementById(`opt-${opt}-${id}`).checked;
-            });
-
-            const data = {
-                name: document.getElementById(`name-${id}`).value,
-                short_name: document.getElementById(`short-${id}`).value,
-                category: document.getElementById(`cat-${id}`).value,
-                price: parseInt(document.getElementById(`price-${id}`).value),
-                image: document.getElementById(`img-${id}`).value,
-                opts: selectedOpts
-            };
-            db.ref('menu/' + id).update(data).then(() => alert('儲存成功！'));
-        }
-
-        function addNewItem() {
-            db.ref('menu').push({ name: "新餐點", category: "飲料", price: 0 });
-        }
-        function deleteItem(id) { if(confirm('刪除？')) db.ref('menu/' + id).remove(); }
-        loadMenu();
+        });
     </script>
 </body>
 </html>

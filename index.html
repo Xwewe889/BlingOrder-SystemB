@@ -3,188 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BlingOrder | 布拎布拎喫茶店</title>
+    <title>BlingOrder | 碼災重製版 2026/3/30</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
-        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
+        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
+        body { font-family: sans-serif; background-color: var(--bg-purple); margin: 0; padding-bottom: 100px; }
+        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 3px solid var(--p-purple); }
+        .logo { font-size: 18px; font-weight: bold; color: var(--p-purple); }
+        .menu-item { background: white; margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-add { background: var(--p-purple); color: white; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; }
         
-        /* 菜單展示 */
-        .menu-container { padding: 10px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-        .menu-item { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
-        .item-img-box { width: 100%; height: 140px; cursor: pointer; position: relative; }
-        .item-img { width: 100%; height: 100%; object-fit: cover; }
-        .item-info { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; }
-        .item-name { font-weight: bold; font-size: 15px; color: #444; height: 42px; overflow: hidden; line-height: 1.4; }
-        .item-price { color: var(--primary-pink); font-weight: 800; font-size: 16px; margin-top: 5px; }
-        .add-btn { background: var(--primary-pink); color: white; border: none; padding: 10px; width: 100%; border-radius: 10px; margin-top: auto; cursor: pointer; font-weight: bold; font-size: 14px; }
-
-        /* 底部購物車條 */
-        .cart-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; background: white; border-radius: 50px; height: 65px; display: flex; align-items: center; justify-content: space-between; padding: 0 25px; box-shadow: 0 10px 25px rgba(255,133,162,0.4); z-index: 1000; border: 2.5px solid var(--primary-pink); box-sizing: border-box; }
-        .submit-trigger { background: var(--primary-pink); color: white; border: none; padding: 8px 20px; border-radius: 25px; font-weight: bold; font-size: 15px; }
-
-        /* 彈窗樣式 */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 90%; max-width: 400px; border-radius: 25px; position: relative; overflow: hidden; animation: pop 0.25s ease-out; }
-        @keyframes pop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        /* 詳情彈窗 Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 85%; max-width: 400px; border-radius: 20px; padding: 20px; position: relative; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; }
         
-        /* 左上角打 X 按鈕 */
-        .close-x { position: absolute; top: 15px; left: 15px; width: 36px; height: 36px; background: rgba(0,0,0,0.5); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; z-index: 2100; border: 2px solid white; line-height: 1; }
-        
-        .detail-img { width: 100%; max-height: 300px; object-fit: cover; }
-        .detail-body { padding: 25px; }
-        .detail-desc { color: #666; line-height: 1.6; margin: 15px 0; font-size: 14px; white-space: pre-wrap; }
-
-        .cart-body { padding: 30px 25px 25px 25px; }
-        .table-info-tag { background: #fff0f3; color: var(--primary-pink); padding: 8px 15px; border-radius: 10px; font-weight: bold; text-align: center; margin-bottom: 20px; font-size: 16px; border: 1px solid #ffccd5; }
-        .cart-list { max-height: 250px; overflow-y: auto; margin-bottom: 20px; }
-        .cart-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #fef2f2; align-items: center; }
-        .remove-link { color: #ff4d4d; font-size: 12px; margin-left: 10px; cursor: pointer; text-decoration: underline; }
+        .cart-bar { position: fixed; bottom: 20px; left: 5%; width: 90%; background: var(--p-purple); color: white; padding: 15px; border-radius: 50px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(155,135,245,0.4); }
     </style>
 </head>
 <body>
+    <div class="header">
+        <div class="logo">💎 BlingOrder 碼災重製版 (V2)</div>
+        <div style="font-size: 10px; color: #aaa;">2026/03/30 重裝上陣</div>
+    </div>
 
-<div class="header">
-    <div class="logo">🌸 BlingOrder | <span id="display-table-title">載入中...</span></div>
-</div>
+    <div id="menu-list"></div>
 
-<div class="menu-container" id="menu-list"></div>
-
-<div class="cart-bar" onclick="openCart()">
-    <div style="font-weight:bold; font-size: 16px;">🛒 (<span id="cart-count">0</span>)</div>
-    <div id="cart-total-display" style="color: var(--primary-pink); font-weight: 800; font-size: 20px;">$ 0</div>
-    <button class="submit-trigger">點好了</button>
-</div>
-
-<div class="modal" id="detail-modal" onclick="closeDetail()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-x" onclick="closeDetail()">✕</div>
-        <img id="detail-img" class="detail-img" src="">
-        <div class="detail-body">
-            <div id="detail-name" style="font-size: 22px; font-weight: bold; color: #333;"></div>
-            <div id="detail-price" style="color: var(--primary-pink); font-size: 24px; font-weight: 800; margin-top: 5px;"></div>
-            <div id="detail-desc" class="detail-desc"></div>
-            <button id="detail-add-btn" class="add-btn" style="padding: 15px; font-size: 18px;">加入購物車</button>
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">×</span>
+            <h3 id="m-name">餐點名稱</h3>
+            <p id="m-note" style="color: #666; font-size: 14px;"></p>
+            <div style="font-size: 20px; color: var(--p-purple); font-weight: bold;">$ <span id="m-price">0</span></div>
+            <button onclick="addFromModal()" style="width:100%; background:var(--p-purple); color:white; border:none; padding:12px; border-radius:10px; margin-top:15px; font-weight:bold;">加入購物車</button>
         </div>
     </div>
-</div>
 
-<div class="modal" id="cart-modal" onclick="closeCart()">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div class="close-x" onclick="closeCart()">✕</div>
-        <div class="cart-body">
-            <div style="font-size: 20px; font-weight: bold; text-align: center; margin-bottom: 15px; color: var(--primary-pink);">您的點餐清單</div>
-            
-            <div class="table-info-tag" id="table-display-tag">偵測桌號中...</div>
-
-            <div id="cart-items-list" class="cart-list"></div>
-
-            <div style="display:flex; justify-content:space-between; font-weight: bold; font-size: 1.3em; padding: 15px 0; border-top: 2px solid #fff0f3;">
-                <span>應付總計</span>
-                <span id="modal-total" style="color: var(--primary-pink);">$ 0</span>
-            </div>
-
-            <button class="add-btn" style="margin-top: 10px; padding: 16px; font-size: 18px;" onclick="submitOrder()">確認送出訂單</button>
-        </div>
+    <div class="cart-bar" onclick="submitOrder()">
+        <span>🛒 已選 <span id="cart-count">0</span> 項餐點</span>
+        <span style="font-weight: bold;">送出訂單 ></span>
     </div>
-</div>
 
-<script>
-    const firebaseConfig = { databaseURL: "https://blingorder-default-rtdb.firebaseio.com" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    // 取得網址桌號
-    const urlParams = new URLSearchParams(window.location.search);
-    let tableId = urlParams.get('table') || "未知";
-    let tableDisplay = tableId === "7" ? "💎 包廂" : tableId + " 桌";
-    
-    document.getElementById('display-table-title').innerText = tableDisplay;
-    document.getElementById('table-display-tag').innerText = "📍 您目前的座號：" + tableDisplay;
-
-    let cart = [];
-    let menuMap = {};
-
-    // 載入菜單
-    db.ref('menu').on('value', snap => {
-        const list = document.getElementById('menu-list');
-        list.innerHTML = '';
-        snap.forEach(child => {
-            const item = child.val();
-            menuMap[item.name] = item;
-            const div = document.createElement('div');
-            div.className = 'menu-item';
-            div.innerHTML = `
-                <div class="item-img-box" onclick="showDetail('${item.name}')">
-                    <img class="item-img" src="${item.image || ''}">
-                </div>
-                <div class="item-info">
-                    <div class="item-name">${item.name}</div>
-                    <div class="item-price">$ ${item.price}</div>
-                    <button class="add-btn" onclick="addToCart('${item.name}', ${item.price})">加入</button>
-                </div>
-            `;
-            list.appendChild(div);
-        });
-    });
-
-    function showDetail(name) {
-        const item = menuMap[name];
-        document.getElementById('detail-img').src = item.image || '';
-        document.getElementById('detail-name').innerText = item.name;
-        document.getElementById('detail-price').innerText = `$ ${item.price}`;
-        document.getElementById('detail-desc').innerText = item.description || '暫無介紹';
-        document.getElementById('detail-add-btn').onclick = () => { addToCart(item.name, item.price); closeDetail(); };
-        document.getElementById('detail-modal').style.display = 'flex';
-    }
-
-    function closeDetail() { document.getElementById('detail-modal').style.display = 'none'; }
-    function openCart() { document.getElementById('cart-modal').style.display = 'flex'; }
-    function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
-
-    function addToCart(name, price) {
-        cart.push({ name: String(name), price: Number(price) });
-        updateUI();
-    }
-
-    function updateUI() {
-        const total = cart.reduce((s, i) => s + i.price, 0);
-        document.getElementById('cart-count').innerText = cart.length;
-        document.getElementById('cart-total-display').innerText = `$ ${total}`;
-        document.getElementById('modal-total').innerText = `$ ${total}`;
-        let html = '';
-        cart.forEach((item, idx) => {
-            html += `<div class="cart-row">
-                <span>${item.name}</span>
-                <span>$${item.price} <span class="remove-link" onclick="removeItem(${idx})">移除</span></span>
-            </div>`;
-        });
-        document.getElementById('cart-items-list').innerHTML = html || '<p style="text-align:center; color:#ccc;">購物車是空的</p>';
-    }
-
-    function removeItem(idx) { cart.splice(idx, 1); updateUI(); }
-
-    function submitOrder() {
-        if (tableId === "未知") { alert('找不到桌號，請重新掃描桌上 QR Code！'); return; }
-        if (cart.length === 0) { alert('購物車還沒有餐點喔！'); return; }
-
-        const orderData = {
-            table: String(tableId),
-            items: cart.map(i => ({ name: String(i.name), price: Number(i.price) })),
-            totalPrice: Number(cart.reduce((s, i) => s + i.price, 0)),
-            status: "待處理",
-            payStatus: "尚未結帳",
-            timestamp: Date.now()
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
         };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let cart = [];
+        let currentItem = null;
 
-        db.ref('orders').push(orderData).then(() => {
-            alert('訂單已成功送出！請稍候餐點。');
-            cart = []; updateUI(); closeCart();
-        }).catch(() => alert('系統忙碌中，請洽店員！'));
-    }
-</script>
+        // 讀取 V2 菜單
+        db.ref('menu_v2').on('value', snap => {
+            const items = snap.val() || {};
+            const list = document.getElementById('menu-list');
+            list.innerHTML = '';
+            Object.keys(items).forEach(id => {
+                const item = items[id];
+                list.innerHTML += `
+                    <div class="menu-item" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}')">
+                        <div>
+                            <div style="font-weight:bold">${item.name}</div>
+                            <div style="font-size:12px; color:#999">$${item.price}</div>
+                        </div>
+                        <button class="btn-add">點餐</button>
+                    </div>
+                `;
+            });
+        });
+
+        function openModal(name, price, note) {
+            currentItem = { name, price: parseInt(price) };
+            document.getElementById('m-name').innerText = name;
+            document.getElementById('m-price').innerText = price;
+            document.getElementById('m-note').innerText = note || "美味準備中...";
+            document.getElementById('detail-modal').style.display = 'flex';
+        }
+
+        function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
+
+        function addFromModal() {
+            cart.push(currentItem);
+            document.getElementById('cart-count').innerText = cart.length;
+            closeModal();
+        }
+
+        function submitOrder() {
+            if(cart.length === 0) return alert('購物車是空的喔！');
+            const tableId = new URLSearchParams(window.location.search).get('table') || '未知';
+            const total = cart.reduce((s, i) => s + i.price, 0);
+            db.ref('orders_v2').push({
+                tableId,
+                items: cart,
+                totalAmount: total,
+                timestamp: Date.now(),
+                payStatus: "尚未結帳"
+            }).then(() => {
+                alert('訂單已送達廚房！');
+                cart = [];
+                document.getElementById('cart-count').innerText = '0';
+            });
+        }
+    </script>
 </body>
 </html>
