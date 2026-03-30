@@ -9,11 +9,24 @@
     <style>
         :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; --p-purple: #9b87f5; }
         body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 120px; -webkit-tap-highlight-color: transparent; }
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 2px solid var(--primary-pink); }
+        
+        /* 頁首與 Banner */
+        .header { background: white; padding: 15px; text-align: center; position: sticky; top:0; z-index: 1000; border-bottom: 2px solid var(--primary-pink); }
         .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
+        .banner-container { width: 100%; overflow: hidden; background: #fff; }
+        .banner-img { width: 100%; display: block; object-fit: cover; max-height: 200px; }
+        
         .table-info { background: #fff; padding: 5px; font-size: 13px; font-weight: bold; color: var(--p-purple); text-align: center; border-bottom: 1px solid #ffe4e9; }
-        .category-title { margin: 25px 15px 12px; font-size: 18px; font-weight: bold; color: var(--p-purple); display: flex; align-items: center; }
+
+        /* 類別導覽列 */
+        .cat-nav { display: flex; overflow-x: auto; background: white; padding: 10px; gap: 10px; position: sticky; top: 55px; z-index: 999; border-bottom: 1px solid #eee; white-space: nowrap; scrollbar-width: none; }
+        .cat-nav::-webkit-scrollbar { display: none; }
+        .cat-item { padding: 6px 15px; background: #fdf2f4; color: var(--primary-pink); border-radius: 20px; font-size: 14px; font-weight: bold; border: 1px solid #ffe4e9; text-decoration: none; }
+        .cat-item:active { background: var(--primary-pink); color: white; }
+
+        .category-title { margin: 25px 15px 12px; font-size: 18px; font-weight: bold; color: var(--p-purple); display: flex; align-items: center; scroll-margin-top: 110px; }
         .category-title::before { content: "✿"; margin-right: 8px; }
+        
         .menu-container { padding: 0 12px; }
         .item-card { background: white; border-radius: 18px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(255,133,162,0.1); position: relative; transition: 0.2s; }
         .item-card:active { transform: scale(0.97); }
@@ -24,20 +37,27 @@
         .sold-out-tag { position: absolute; right: 15px; top: 15px; background: #666; color: white; font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: bold; }
         
         /* Modal 樣式 */
-        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; backdrop-filter: blur(3px); }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center; backdrop-filter: blur(3px); }
         .modal-content { background:white; width:88%; max-width:350px; border-radius:25px; overflow:hidden; position:relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         .modal-img { width: 100%; height: 220px; object-fit: cover; }
-        .close-btn { position:absolute; top:15px; right:15px; font-size:32px; color:white; cursor:pointer; text-shadow: 0 2px 8px rgba(0,0,0,0.6); z-index: 1001; }
+        .close-btn { position:absolute; top:15px; right:15px; font-size:32px; color:white; cursor:pointer; text-shadow: 0 2px 8px rgba(0,0,0,0.6); z-index: 2001; }
         @keyframes slideUp { from { transform: translateY(40px); opacity:0; } to { transform: translateY(0); opacity:1; } }
         
-        .cart-bar { position:fixed; bottom:30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--primary-pink); color:white; padding: 18px 22px; border-radius: 50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(255,133,162,0.5); z-index:900; box-sizing: border-box; cursor: pointer; }
+        .cart-bar { position:fixed; bottom:30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--primary-pink); color:white; padding: 18px 22px; border-radius: 50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(255,133,162,0.5); z-index:1500; box-sizing: border-box; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">布拎布拎 (B測試版)</div>
     </div>
+    
+    <div class="banner-container">
+        <img src="../images/banner.jpg" class="banner-img" alt="Store Banner" onerror="this.style.display='none'">
+    </div>
+
     <div class="table-info" id="display-table">載入桌號中...</div>
+
+    <div class="cat-nav" id="cat-nav"></div>
 
     <div id="menu-list" class="menu-container"></div>
 
@@ -70,7 +90,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 偵測網址桌號
         const urlParams = new URLSearchParams(window.location.search);
         const tableId = urlParams.get('table') || '外帶';
         document.getElementById('display-table').innerText = `📍 當前位置：${tableId === '外帶' ? '外帶' : tableId + ' 號桌'}`;
@@ -81,7 +100,10 @@
         // 載入測試菜單 (beta)
         db.ref('menu_v2_beta').on('value', snap => {
             const list = document.getElementById('menu-list'); 
+            const nav = document.getElementById('cat-nav');
             list.innerHTML = ''; 
+            nav.innerHTML = '';
+            
             const data = snap.val() || {};
             const grouped = {}; 
             Object.values(data).forEach(i => { 
@@ -89,9 +111,12 @@
                 grouped[i.category].push(i); 
             });
 
-            // 依照分類顯示
             Object.keys(grouped).forEach(cat => {
-                list.innerHTML += `<div class="category-title">${cat}</div>`;
+                // 產生類別按鈕
+                nav.innerHTML += `<a href="#cat-${cat}" class="cat-item">${cat}</a>`;
+                
+                // 產生類別內容
+                list.innerHTML += `<div class="category-title" id="cat-${cat}">${cat}</div>`;
                 grouped[cat].forEach(item => {
                     const isSoldOut = item.isSoldOut === true;
                     list.innerHTML += `
@@ -136,7 +161,7 @@
                 timestamp: Date.now(), 
                 payStatus: "尚未結帳" 
             }).then(() => {
-                alert('🧪 測試訂單已送出！\n(這是 B 系統，不會進入正式報表)'); 
+                alert('🧪 測試訂單已送出！'); 
                 cart = []; 
                 document.getElementById('cart-info').innerText = '🛒 尚未挑選測試餐點';
             });
