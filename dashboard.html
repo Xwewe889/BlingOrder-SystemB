@@ -2,42 +2,31 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlingOrder | 數據分析中心</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary-pink: #ffafbd; --dark-pink: #e91e63; --bg-light: #fff5f7; }
-        body { font-family: sans-serif; background-color: var(--bg-light); margin: 0; padding: 20px; color: #555; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 30px; }
-        h1 { color: var(--dark-pink); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: white; padding: 20px; border-radius: 15px; text-align: center; border-bottom: 5px solid var(--primary-pink); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: var(--dark-pink); margin-top: 10px; }
-        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .chart-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .history-list { background: white; padding: 20px; border-radius: 15px; list-style: none; }
-        .history-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+        body { font-family: sans-serif; background: #fff5f7; margin: 0; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .value { font-size: 1.5rem; font-weight: bold; color: #e91e63; }
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-card { background: white; padding: 20px; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header><h1>💎 BlingOrder 營運數據分析</h1></header>
-        <div class="stats-grid">
-            <div class="stat-card">本日營收 (<span id="t-date"></span>)<div class="value" id="today-revenue">$0</div></div>
-            <div class="stat-card">昨日營收 (<span id="y-date"></span>)<div class="value" id="yesterday-revenue">$0</div></div>
-            <div class="stat-card">本月累計<div class="value" id="month-revenue">$0</div></div>
-            <div class="stat-card">歷史總營收<div class="value" id="total-revenue">$0</div></div>
-        </div>
-        <div class="charts-grid">
-            <div class="chart-box"><h3>🍎 熱銷品項</h3><canvas id="pieChart"></canvas></div>
-            <div class="chart-box"><h3>🏆 排行榜</h3><div id="ranking-list"></div></div>
-        </div>
-        <div class="chart-box"><h3>🗓️ 每日營收日誌 (最近15天)</h3><div id="history-list"></div></div>
+    <div class="grid">
+        <div class="card">今日營收<div class="value" id="t-rev">$0</div></div>
+        <div class="card">昨日營收<div class="value" id="y-rev">$0</div></div>
+        <div class="card">本月累計<div class="value" id="m-rev">$0</div></div>
+        <div class="card">歷史總額<div class="value" id="all-rev">$0</div></div>
     </div>
+    <div class="chart-grid">
+        <div class="chart-card"><h3>熱銷排行</h3><div id="rank"></div></div>
+        <div class="chart-card"><h3>營收日誌</h3><div id="logs"></div></div>
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
@@ -49,76 +38,51 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function updateDashboard() {
-            const now = new Date();
-            const todayStr = now.toLocaleDateString('zh-TW');
-            const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
-            const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
-            document.getElementById('t-date').innerText = (now.getMonth()+1)+'/'+now.getDate();
-            document.getElementById('y-date').innerText = (yesterday.getMonth()+1)+'/'+yesterday.getDate();
+        function refresh() {
+            db.ref('orders').once('value', snapshot => {
+                const data = snapshot.val() || {};
+                const now = new Date();
+                const today = now.toLocaleDateString('zh-TW');
+                const yesterday = new Date(); yesterday.setDate(now.getDate()-1);
+                const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
 
-            db.ref('orders').once('value', (snapshot) => {
-                const orders = snapshot.val() || {};
-                let todayRev = 0, yesterdayRev = 0, monthRev = 0, totalRev = 0;
-                let itemCounts = {}, dailyRev = {};
+                let t = 0, y = 0, m = 0, total = 0;
+                let items = {}, daily = {};
 
-                Object.values(orders).forEach(order => {
-                    const amount = parseInt(order.totalAmount || order.totalPrice || order.total_price || 0);
-                    const d = new Date(order.timestamp || Date.now());
+                Object.values(data).forEach(order => {
+                    const amount = parseInt(order.totalAmount || 0); // 只讀取新版欄位，避免抓到舊資料
+                    const d = new Date(order.timestamp || 0);
                     const dStr = d.toLocaleDateString('zh-TW');
-                    
-                    totalRev += amount;
-                    if (dStr === todayStr) todayRev += amount;
-                    if (dStr === yesterdayStr) yesterdayRev += amount;
-                    if (d.getMonth() === now.getMonth()) monthRev += amount;
 
-                    dailyRev[dStr] = (dailyRev[dStr] || 0) + amount;
+                    total += amount;
+                    if(dStr === today) t += amount;
+                    if(dStr === yesterdayStr) y += amount;
+                    if(d.getMonth() === now.getMonth()) m += amount;
 
-                    if (order.items && Array.isArray(order.items)) {
-                        order.items.forEach(item => {
-                            const name = item.name || item.itemName;
-                            if(name) { // 只有有名稱才統計，過濾掉 undefined
-                                itemCounts[name] = (itemCounts[name] || 0) + (item.quantity || item.count || 1);
-                            }
+                    if(amount > 0) daily[dStr] = (daily[dStr] || 0) + amount;
+
+                    if(Array.isArray(order.items)) {
+                        order.items.forEach(i => {
+                            if(i.name) items[i.name] = (items[i.name] || 0) + (i.quantity || 1);
                         });
                     }
                 });
 
-                document.getElementById('today-revenue').innerText = '$' + todayRev.toLocaleString();
-                document.getElementById('yesterday-revenue').innerText = '$' + yesterdayRev.toLocaleString();
-                document.getElementById('month-revenue').innerText = '$' + monthRev.toLocaleString();
-                document.getElementById('total-revenue').innerText = '$' + totalRev.toLocaleString();
+                document.getElementById('t-rev').innerText = '$' + t;
+                document.getElementById('y-rev').innerText = '$' + y;
+                document.getElementById('m-rev').innerText = '$' + m;
+                document.getElementById('all-rev').innerText = '$' + total;
 
-                // 排行榜 (排除掉未知的品項)
-                const sortedItems = Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]);
-                document.getElementById('ranking-list').innerHTML = sortedItems.slice(0,10).map((i,idx)=>
-                    `<div class="history-item"><span>${idx+1}. ${i[0]}</span><span>${i[1]} 份</span></div>`).join('');
-
-                // 歷史日誌 (確保 2/14 之後的都會出來)
-                const sortedHistory = Object.entries(dailyRev).sort((a,b)=>new Date(b[0]) - new Date(a[0]));
-                document.getElementById('history-list').innerHTML = sortedHistory.map(h=>
-                    `<div class="history-item"><span>${h[0]}</span><b>$${h[1].toLocaleString()}</b></div>`).join('');
-
-                updateChart(sortedItems);
+                // 顯示日誌
+                const sortedLogs = Object.entries(daily).sort((a,b) => new Date(b[0]) - new Date(a[0]));
+                document.getElementById('logs').innerHTML = sortedLogs.map(l => `<div>${l[0]} : $${l[1]}</div>`).join('');
+                
+                // 顯示排行
+                const sortedRank = Object.entries(items).sort((a,b) => b[1] - a[1]);
+                document.getElementById('rank').innerHTML = sortedRank.slice(0,10).map(i => `<div>${i[0]} : ${i[1]}份</div>`).join('');
             });
         }
-
-        let chart;
-        function updateChart(sortedItems) {
-            const ctx = document.getElementById('pieChart').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: sortedItems.slice(0, 8).map(i => i[0]),
-                    datasets: [{
-                        data: sortedItems.slice(0, 8).map(i => i[1]),
-                        backgroundColor: ['#ffafbd', '#ffc3a0', '#ff9a9e', '#fad0c4', '#a1c4fd', '#c2e9fb', '#fbc2eb', '#a6c1ee']
-                    }]
-                }
-            });
-        }
-        updateDashboard();
+        refresh();
     </script>
 </body>
 </html>
