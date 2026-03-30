@@ -17,36 +17,49 @@
             background-image: url('../images/retro/retro_pattern_bg.png');
             background-repeat: repeat;
             margin: 0;
-            padding-bottom: 150px; /* 留空間給底部按鈕 */
+            padding-bottom: 150px;
             color: #3d2b1f;
             -webkit-tap-highlight-color: transparent;
+            /* 讓內容可以蓋過招牌 */
+            display: flex;
+            flex-direction: column;
         }
 
-        /* 頂部招牌：加高並確保不重複 */
-        .header {
+        /* 1. 招牌 Banner：設為底層滿格 */
+        .header-banner {
+            width: 100%;
+            height: 180px; /* 根據招牌比例調整高度 */
             background-image: url('../images/retro/retro_banner.png');
-            background-size: contain;
+            background-size: 100% auto; /* 橫向滿格 */
             background-repeat: no-repeat;
-            background-position: center;
-            height: 120px;
-            margin-bottom: 10px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            background-position: top center;
+            position: relative;
+            z-index: 1; /* 最底層 */
+            margin-bottom: -30px; /* 讓下面的內容稍微往上吃掉一點招牌邊緣，更自然 */
         }
 
+        /* 2. 桌號資訊：開始蓋在招牌上方 */
         .table-info {
+            position: relative;
+            z-index: 10; /* 高於招牌 */
             background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
-            font-size: 14px;
+            padding: 12px;
+            font-size: 15px;
             font-weight: bold;
             color: var(--retro-wood);
             text-align: center;
+            border-top: 3px double var(--retro-gold);
             border-bottom: 3px double var(--retro-gold);
-            margin-bottom: 10px;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
         }
 
-        /* 分類容器：確保橫桿在正中間 */
+        /* 內容容器：確保在招牌上方 */
+        .main-content {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 分類容器與橫桿 */
         .category-container {
             margin: 40px 0 20px;
             display: flex;
@@ -56,12 +69,11 @@
             height: 60px;
         }
 
-        /* 木頭裝飾橫桿：貫穿背景 */
         .category-container::after {
             content: "";
             position: absolute;
             left: 0; right: 0; top: 50%;
-            height: 36px; /* 稍微縮小一點才不會太粗 */
+            height: 36px;
             transform: translateY(-50%);
             background-image: url('../images/retro/retro_wood_divider.png');
             background-size: auto 100%;
@@ -81,11 +93,10 @@
             background: url('../images/retro/category_mid.png') repeat-x; background-size: auto 100%; 
             padding: 0 20px; display: flex; align-items: center;
             color: #3d2b1f; font-weight: bold; font-size: 22px; letter-spacing: 3px;
-            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
         }
         .cat-right { width: 35px; background: url('../images/retro/category_right.png') no-repeat; background-size: 100% 100%; }
 
-        /* 雙欄菜單佈局 */
+        /* 菜單雙欄佈局 */
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -95,7 +106,6 @@
 
         .item-card {
             background: #fdfaf1;
-            /* 九宮格邊框優化 */
             border: 18px solid transparent;
             border-image: url('../images/retro/retro_frame.png') 45 stretch;
             padding: 0;
@@ -114,41 +124,19 @@
             border: 1px solid #d4af37;
         }
 
-        .item-info {
-            padding: 10px 5px;
-            text-align: center;
-            width: 100%;
-        }
+        .item-info { padding: 10px 5px; text-align: center; width: 100%; }
+        .item-info h3 { margin: 5px 0; font-size: 16px; color: #3d2b1f; height: 45px; display: flex; align-items: center; justify-content: center; }
+        .price { font-family: "Georgia", serif; color: #a52a2a; font-weight: bold; font-size: 20px; }
 
-        .item-info h3 { 
-            margin: 5px 0; 
-            font-size: 16px; 
-            color: #3d2b1f; 
-            height: 45px; 
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .price { 
-            font-family: "Georgia", serif; 
-            color: #a52a2a; 
-            font-weight: bold; 
-            font-size: 20px; 
-            margin-bottom: 5px;
-        }
-
-        /* 小旋鈕按鈕：縮小並靠邊 */
         .add-btn-icon {
-            width: 60px;
+            width: 65px;
             cursor: pointer;
             transition: 0.2s;
             filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3));
         }
-        .add-btn-icon:active { transform: scale(0.9) rotate(20deg); }
+        .add-btn-icon:active { transform: scale(0.9) rotate(15deg); }
 
-        /* 捲動條校正 */
+        /* 捲動條 */
         ::-webkit-scrollbar { width: 28px; }
         ::-webkit-scrollbar-track {
             background-image: url('../images/retro/retro_track_top.png'), 
@@ -163,68 +151,53 @@
             background-size: 22px;
         }
 
-        /* 底部送出訂單區域 */
+        /* 底部固定按鈕 */
         .footer-container {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 110px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 900;
-            pointer-events: none; /* 防止遮擋點擊 */
+            bottom: 0; left: 0; width: 100%;
+            height: 110px; display: flex; justify-content: center; align-items: center;
+            z-index: 900; pointer-events: none;
         }
 
         .cart-footer {
             pointer-events: auto;
-            width: 320px;
-            height: 80px;
+            width: 320px; height: 80px;
             background: url('../images/retro/retro_submit_order.png') no-repeat center;
             background-size: contain;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
             filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5));
             cursor: pointer;
         }
         
         #cart-status { 
-            color: #fff; 
-            font-size: 13px; 
-            margin-top: -8px; 
-            font-weight: bold; 
-            text-shadow: 1px 1px 3px #000;
-            background: rgba(0,0,0,0.3);
-            padding: 2px 10px;
-            border-radius: 10px;
+            color: #fff; font-size: 13px; margin-top: -8px; font-weight: bold; 
+            text-shadow: 1px 1px 3px #000; background: rgba(0,0,0,0.3);
+            padding: 2px 10px; border-radius: 10px;
         }
 
-        /* Modal 修正 */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center; }
         .modal-content {
             background: #fdfaf1;
             border: 22px solid transparent;
             border-image: url('../images/retro/retro_modal.png') 80 stretch;
-            width: 85%;
-            max-width: 380px;
-            padding: 0;
+            width: 85%; max-width: 380px;
         }
     </style>
 </head>
 <body>
-    <div class="header"></div>
-    <div class="table-info" id="display-table">📍 讀取中...</div>
-    
-    <div id="menu-list"></div>
+    <div class="header-banner"></div>
 
-    <div id="detail-modal" class="modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; justify-content:center; align-items:center;">
+    <div class="main-content">
+        <div class="table-info" id="display-table">📍 讀取中...</div>
+        <div id="menu-list"></div>
+    </div>
+
+    <div id="detail-modal" class="modal">
         <div class="modal-content">
             <img id="m-img" style="width:100%; height: 200px; object-fit: cover; border-bottom:2px solid var(--retro-gold);" src="">
             <div style="padding:20px; text-align:center;">
                 <h2 id="m-name" style="margin:0; font-size: 24px;"></h2>
-                <p id="m-note" style="font-size:15px; margin:15px 0; color: #5d3a1a; line-height: 1.5;"></p>
+                <p id="m-note" style="font-size:15px; margin:15px 0; color: #5d3a1a;"></p>
                 <div id="m-price" style="font-size:28px; color:#a52a2a; font-weight:bold; margin-bottom: 10px;"></div>
                 <img src="../images/retro/retro_button.png" class="add-btn-icon" style="width: 120px;" onclick="addFromModal()">
                 <div onclick="closeModal()" style="margin-top:20px; color:#888; font-size:14px; text-decoration:underline; cursor:pointer;">返回菜單</div>
@@ -299,7 +272,7 @@
             tempItem = { name:n, price:parseInt(p), category:cat };
             document.getElementById('m-name').innerText = n;
             document.getElementById('m-price').innerText = '$ ' + p;
-            document.getElementById('m-note').innerText = nt || "昭和風味推薦，口感濃郁，層次分明。";
+            document.getElementById('m-note').innerText = nt || "昭和風味推薦。";
             document.getElementById('m-img').src = img || 'https://via.placeholder.com/300';
             document.getElementById('detail-modal').style.display = 'flex';
         }
