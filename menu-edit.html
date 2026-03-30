@@ -2,61 +2,63 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 菜單靈活管理 V2.4 (含售完功能)</title>
+    <title>BlingOrder | 菜單管理 V2.4 (碼災重製版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #fdf2f8; padding: 10px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .form-group { background: #fff5f7; padding: 20px; border-radius: 12px; border: 1px solid #fce7f3; margin-bottom: 20px; }
-        .input-row { display: grid; grid-template-columns: 1.5fr 0.8fr 1fr 2fr; gap: 10px; margin-bottom: 10px; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .cat-helper { margin: 5px 0 15px; display: flex; flex-wrap: wrap; gap: 8px; }
-        .cat-tag-btn { background: #ffe4e9; color: #ff85a2; border: 1px solid #ff85a2; padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .cat-tag-btn:hover { background: #ff85a2; color: white; }
-        .btn-main { background: #9b87f5; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
-        .btn-update { background: #ff85a2; } /* 修改狀態下的按鈕顏色 */
+        :root { --p-purple: #9b87f5; --soft-pink: #fdf2f8; --dark-pink: #ff85a2; }
+        body { font-family: sans-serif; background: var(--soft-pink); padding: 15px; margin: 0; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        h2 { color: var(--dark-pink); text-align: center; border-bottom: 2px solid var(--soft-pink); padding-bottom: 15px; }
         
-        .item-list { margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; }
-        /* 增加欄位給售完按鈕 */
-        .item-row { display: grid; grid-template-columns: 50px 1.5fr 1fr 1fr 2fr 180px; gap: 10px; padding: 12px; border-bottom: 1px solid #eee; align-items: center; font-size: 13px; }
-        .header-row { font-weight: bold; background: #f8f7ff; border-radius: 8px; }
+        /* 表單區域 */
+        .form-group { background: #f8f7ff; padding: 20px; border-radius: 15px; border: 1px solid var(--p-purple); margin-bottom: 30px; }
+        .input-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 12px; margin-bottom: 12px; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 14px; }
+        .cat-helper { margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        .cat-btn { background: white; color: var(--p-purple); border: 1px solid var(--p-purple); padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; }
         
-        /* 刪除與修改按鈕樣式 */
-        .btn-op { color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-right: 5px; font-weight: bold; }
-        .btn-edit { background: #4CAF50; }
-        .btn-del { background: #ff5f6d; }
+        .btn-main { background: var(--p-purple); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .btn-update-mode { background: var(--dark-pink) !important; }
+
+        /* 列表區域 */
+        .item-list { margin-top: 20px; }
+        .item-row { display: grid; grid-template-columns: 60px 1.5fr 1fr 1fr 2fr 200px; gap: 10px; padding: 15px; border-bottom: 1px solid #eee; align-items: center; }
+        .header-row { font-weight: bold; background: #fdfbff; color: #666; font-size: 14px; }
+        .sold-out-status { opacity: 0.4; background: #fafafa; }
         
-        /* 售完/上架按鈕樣式 */
-        .btn-stock { background: #9b87f5; border: none; padding: 6px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; color: white;}
-        .is-sold-out { background: #ccc; color: #666; } /* 售完狀態的樣式 */
-        .sold-out-row { opacity: 0.6; } /* 售完項目的背景變灰色 */
+        /* 按鈕樣式 */
+        .op-btn { border: none; padding: 8px 12px; border-radius: 6px; color: white; font-size: 12px; cursor: pointer; font-weight: bold; margin-right: 5px; }
+        .edit-btn { background: #4CAF50; }
+        .del-btn { background: #ff5f6d; }
+        .stock-btn { background: #9b87f5; min-width: 100px; }
+        .is-sold { background: #aaa !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 style="color:#ff85a2; text-align:center;">🌸 BlingOrder 菜單管理 (V2.4 含售完狀態)</h2>
+        <h2 id="page-title">🟣 BlingOrder 菜單管理 (V2.4 重製版)</h2>
         
         <div class="form-group">
-            <h3 id="form-title">新增餐點</h3>
-            <div class="input-row">
-                <input type="text" id="name" placeholder="餐點名稱 (如: 冰淇淋蘇打)">
+            <h3 id="form-mode-text">新增餐點</h3>
+            <div class="input-grid">
+                <input type="text" id="name" placeholder="餐點名稱">
                 <input type="number" id="price" placeholder="價格">
-                <input type="text" id="category" placeholder="填寫類別 (或點下方快選)">
-                <input type="text" id="image" placeholder="圖片路徑 (images/...)">
+                <input type="text" id="category" placeholder="類別">
+                <input type="text" id="image" placeholder="圖片路徑 (如 images/tea.jpg)">
             </div>
-            <div style="font-size:12px; color:#888;">現有類別快選：</div>
-            <div id="category-helper" class="cat-helper">
-                </div>
-            <textarea id="note" placeholder="餐點詳情介紹..."></textarea>
+            <div style="font-size:12px; color:#999; margin-bottom:5px;">現有類別快選：</div>
+            <div id="cat-helper" class="cat-helper"></div>
+            <textarea id="note" rows="2" placeholder="餐點詳細介紹..."></textarea>
             
-            <input type="hidden" id="edit-id"> <button id="submit-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單</button>
-            <button id="cancel-btn" style="display:none; background:#ccc; margin-top:10px; width:100%; border:none; padding:10px; border-radius:8px;" onclick="resetForm()">取消修改</button>
+            <input type="hidden" id="edit-id">
+            <button id="submit-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單庫</button>
+            <button id="cancel-btn" style="display:none; background:#ccc; margin-top:10px;" class="btn-main" onclick="resetForm()">取消修改</button>
         </div>
 
         <div class="item-list">
             <div class="item-row header-row">
-                <div>圖</div><div>名稱</div><div>類別</div><div>價格</div><div>備註</div><div>操作</div>
+                <div>圖片</div><div>名稱</div><div>類別</div><div>價格</div><div>備註</div><div>操作功能</div>
             </div>
             <div id="list-content"></div>
         </div>
@@ -73,115 +75,89 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let menuData = {}; // 暫存所有菜單資料
+        let allMenu = {};
 
-        // 統一處理「新增」與「更新」
         function handleSubmit() {
             const id = document.getElementById('edit-id').value;
             const data = {
                 name: document.getElementById('name').value,
                 price: parseInt(document.getElementById('price').value),
                 category: document.getElementById('category').value || '未分類',
-                image: document.getElementById('image').value,
-                note: document.getElementById('note').value,
-                // 如果是新增，預設為未售完；如果是修改，則不更動原本的售完狀態
-                isSoldOut: id ? menuData[id].isSoldOut : false
+                image: document.getElementById('image').value || '',
+                note: document.getElementById('note').value || '',
+                isSoldOut: id ? (allMenu[id].isSoldOut || false) : false
             };
 
-            if(!data.name || !data.price) return alert('名稱與價格是必填的喔！');
+            if(!data.name || !data.price) return alert('名稱與價格必填！');
 
             if(id) {
-                // 更新模式
-                db.ref('menu_v2/' + id).update(data).then(() => {
-                    alert('餐點更新成功！');
-                    resetForm();
-                });
+                db.ref('menu_v2/' + id).update(data).then(() => { alert('更新完成！'); resetForm(); });
             } else {
-                // 新增模式
-                db.ref('menu_v2').push(data).then(() => {
-                    alert('餐點上架成功！');
-                    resetForm();
-                });
+                db.ref('menu_v2').push(data).then(() => { alert('新增成功！'); resetForm(); });
             }
         }
 
-        // 點擊「修改」按鈕
         function startEdit(id) {
-            const item = menuData[id];
-            document.getElementById('form-title').innerText = "正在修改：" + item.name;
+            const item = allMenu[id];
             document.getElementById('edit-id').value = id;
             document.getElementById('name').value = item.name;
             document.getElementById('price').value = item.price;
             document.getElementById('category').value = item.category;
             document.getElementById('image').value = item.image;
-            document.getElementById('note').value = item.note || '';
+            document.getElementById('note').value = item.note;
             
-            document.getElementById('submit-btn').innerText = "確認更新餐點";
-            document.getElementById('submit-btn').classList.add('btn-update');
+            document.getElementById('form-mode-text').innerText = "正在修改：" + item.name;
+            document.getElementById('submit-btn').innerText = "確認更新餐點資料";
+            document.getElementById('submit-btn').classList.add('btn-update-mode');
             document.getElementById('cancel-btn').style.display = 'block';
-            window.scrollTo(0, 0); // 捲動到上方方便修改
+            window.scrollTo(0,0);
         }
 
-        // 切換「售完/上架」狀態
-        function toggleSoldOut(id) {
-            const currentStatus = menuData[id].isSoldOut;
-            db.ref('menu_v2/' + id).update({
-                isSoldOut: !currentStatus
-            });
+        function toggleSold(id) {
+            const current = allMenu[id].isSoldOut || false;
+            db.ref('menu_v2/' + id).update({ isSoldOut: !current });
         }
 
-        // 重置表單
         function resetForm() {
-            document.getElementById('form-title').innerText = "新增餐點";
             document.getElementById('edit-id').value = '';
-            document.getElementById('name').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('category').value = '';
-            document.getElementById('image').value = '';
-            document.getElementById('note').value = '';
-            document.getElementById('submit-btn').innerText = "正式上架到 V2 菜單";
-            document.getElementById('submit-btn').classList.remove('btn-update');
+            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
+            document.getElementById('form-mode-text').innerText = "新增餐點";
+            document.getElementById('submit-btn').innerText = "正式上架到 V2 菜單庫";
+            document.getElementById('submit-btn').classList.remove('btn-update-mode');
             document.getElementById('cancel-btn').style.display = 'none';
         }
 
         db.ref('menu_v2').on('value', snap => {
-            const content = document.getElementById('list-content');
-            const helper = document.getElementById('category-helper');
-            content.innerHTML = ''; helper.innerHTML = '';
-            let categories = new Set();
-            menuData = snap.val() || {};
+            const list = document.getElementById('list-content');
+            const helper = document.getElementById('cat-helper');
+            list.innerHTML = ''; helper.innerHTML = '';
+            allMenu = snap.val() || {};
+            let cats = new Set();
 
-            // 將資料按類別排序顯示
-            const sortedKeys = Object.keys(menuData).sort((a,b) => {
-                return menuData[a].category.localeCompare(menuData[b].category);
-            });
+            Object.keys(allMenu).forEach(id => {
+                const item = allMenu[id];
+                if(item.category) cats.add(item.category);
+                const isSold = item.isSoldOut || false;
 
-            sortedKeys.forEach(id => {
-                const item = menuData[id];
-                if(item.category) categories.add(item.category);
-                
-                // 定義售完按鈕的文字與顏色
-                const stockBtnText = item.isSoldOut ? "🔴 售完 (點擊上架)" : "🟢 上架中 (點擊售完)";
-                const stockBtnClass = item.isSoldOut ? "btn-stock is-sold-out" : "btn-stock";
-                const rowClass = item.isSoldOut ? "item-row sold-out-row" : "item-row";
-
-                content.innerHTML += `<div class="${rowClass}">
-                    <img src="${item.image}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;" onerror="this.src='https://via.placeholder.com/40'">
-                    <div><b>${item.name}</b></div>
-                    <div style="color:#9b87f5; font-size:12px;">${item.category}</div>
-                    <div>$${item.price}</div>
-                    <div style="color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${item.note || ''}">${item.note || ''}</div>
-                    <div>
-                        <button class="btn-op btn-edit" onclick="startEdit('${id}')">修改</button>
-                        <button class="btn-op btn-del" onclick="if(confirm('確定要刪除 ${item.name} 嗎？')) db.ref('menu_v2/${id}').remove()">刪除</button>
-                        <button class="${stockBtnClass}" onclick="toggleSoldOut('${id}')">${stockBtnText}</button>
+                list.innerHTML += `
+                    <div class="item-row ${isSold ? 'sold-out-status' : ''}">
+                        <img src="${item.image}" style="width:45px; height:45px; object-fit:cover; border-radius:8px;" onerror="this.src='https://via.placeholder.com/45'">
+                        <div><b>${item.name}</b></div>
+                        <div style="color:var(--p-purple); font-weight:bold;">${item.category}</div>
+                        <div>$${item.price}</div>
+                        <div style="font-size:12px; color:#888; overflow:hidden;">${item.note || ''}</div>
+                        <div>
+                            <button class="op-btn edit-btn" onclick="startEdit('${id}')">修改</button>
+                            <button class="op-btn del-btn" onclick="if(confirm('刪除？')) db.ref('menu_v2/${id}').remove()">刪除</button>
+                            <button class="op-btn stock-btn ${isSold ? 'is-sold' : ''}" onclick="toggleSold('${id}')">
+                                ${isSold ? '🔴 售完' : '🟢 上架中'}
+                            </button>
+                        </div>
                     </div>
-                </div>`;
+                `;
             });
-
-            // 更新快選按鈕
-            categories.forEach(cat => {
-                helper.innerHTML += `<div class="cat-tag-btn" onclick="document.getElementById('category').value='${cat}'">${cat}</div>`;
+            cats.forEach(c => {
+                helper.innerHTML += `<button class="cat-btn" onclick="document.getElementById('category').value='${c}'">${c}</button>`;
             });
         });
     </script>
