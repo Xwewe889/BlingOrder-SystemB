@@ -7,45 +7,64 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
-        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
-        .menu-container { padding: 10px; }
-        .item-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(255,133,162,0.1); }
-        .item-info h3 { margin: 0; font-size: 16px; color: #444; }
-        .item-info p { margin: 5px 0 0; font-size: 13px; color: #888; }
-        .price { color: var(--primary-pink); font-weight: bold; font-size: 18px; margin-top: 5px; }
-        .add-btn { background: var(--primary-pink); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; --p-purple: #9b87f5; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 120px; -webkit-tap-highlight-color: transparent; }
         
-        /* Modal 詳情彈窗 */
-        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
-        .modal-content { background:white; width:85%; max-width:350px; border-radius:20px; padding:25px; position:relative; animation: slideUp 0.3s ease-out; }
-        .close-btn { position:absolute; top:15px; right:20px; font-size:24px; color:#ccc; cursor:pointer; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+        /* Header */
+        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 2px solid var(--primary-pink); }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
 
-        .cart-bar { position:fixed; bottom:20px; left:5%; width:90%; background:var(--primary-pink); color:white; padding:15px; border-radius:50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 8px 20px rgba(255,133,162,0.4); z-index:900; }
+        /* 類別標題 */
+        .category-title { margin: 20px 15px 10px; font-size: 18px; font-weight: bold; color: var(--p-purple); display: flex; align-items: center; }
+        .category-title::before { content: "✿"; margin-right: 8px; }
+
+        /* 餐點卡片 */
+        .menu-container { padding: 0 10px; }
+        .item-card { background: white; border-radius: 18px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(255,133,162,0.1); transition: 0.2s; position: relative; }
+        .item-card:active { transform: scale(0.98); }
+        
+        .item-img { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; margin-right: 15px; background: #eee; }
+        .item-info { flex: 1; }
+        .item-info h3 { margin: 0; font-size: 16px; color: #444; }
+        .item-info .price { color: var(--primary-pink); font-weight: bold; font-size: 18px; margin-top: 5px; }
+        
+        /* 售完狀態 */
+        .sold-out { opacity: 0.5; filter: grayscale(1); pointer-events: none !important; }
+        .sold-out-tag { position: absolute; right: 15px; top: 15px; background: #666; color: white; font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: bold; }
+
+        /* Modal 詳情彈窗 */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align-items:center; }
+        .modal-content { background:white; width:85%; max-width:350px; border-radius:25px; padding:0; overflow:hidden; position:relative; animation: slideUp 0.3s ease-out; }
+        .modal-img { width: 100%; height: 200px; object-fit: cover; }
+        .modal-body { padding: 20px; }
+        .close-btn { position:absolute; top:15px; right:15px; font-size:28px; color:white; cursor:pointer; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 1001; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+        /* 下方購物車條 */
+        .cart-bar { position:fixed; bottom:25px; left:5%; width:90%; background: var(--primary-pink); color:white; padding:18px; border-radius:50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 25px rgba(255,133,162,0.5); z-index:900; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="logo">布拎布拎喫茶店</div>
-    </div>
+    <div class="header"><div class="logo">布拎布拎喫茶店</div></div>
 
-    <div id="menu-list" class="menu-container"></div>
+    <div id="menu-list" class="menu-container">
+        </div>
 
     <div id="detail-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">×</span>
-            <h2 id="modal-name" style="color:#444;">餐點名稱</h2>
-            <p id="modal-note" style="color:#888; line-height:1.6;"></p>
-            <div id="modal-price" style="font-size:24px; color:var(--primary-pink); font-weight:bold; margin:15px 0;"></div>
-            <button onclick="addToCartFromModal()" style="width:100%; background:var(--primary-pink); color:white; border:none; padding:15px; border-radius:15px; font-size:16px; font-weight:bold;">加入購物車</button>
+            <img id="m-img" class="modal-img" src="">
+            <div class="modal-body">
+                <h2 id="m-name" style="margin:0; color:#444;">餐點名稱</h2>
+                <p id="m-note" style="color:#888; line-height:1.6; margin:10px 0; font-size:14px;"></p>
+                <div id="m-price" style="font-size:24px; color:var(--primary-pink); font-weight:bold; margin-top:15px;"></div>
+                <button onclick="addFromModal()" style="width:100%; background:var(--primary-pink); color:white; border:none; padding:15px; border-radius:15px; font-size:16px; font-weight:bold; margin-top:10px; box-shadow: 0 4px 0 #e06080;">加入購物車</button>
+            </div>
         </div>
     </div>
 
     <div class="cart-bar" onclick="submitOrder()">
-        <span id="cart-info">🛒 尚未點餐</span>
+        <span id="cart-info">🛒 尚未挑選餐點</span>
         <span style="font-weight:bold;">送出訂單 ></span>
     </div>
 
@@ -59,37 +78,54 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        
         let cart = [];
         let tempItem = null;
 
-        // 讀取 V2 菜單
+        // 監聽 V2 菜單並分區顯示
         db.ref('menu_v2').on('value', snap => {
             const list = document.getElementById('menu-list');
             list.innerHTML = '';
-            snap.forEach(child => {
-                const item = child.val();
-                list.innerHTML += `
-                    <div class="item-card" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}')">
-                        <div class="item-info">
-                            <h3>${item.name}</h3>
-                            <div class="price">$${item.price}</div>
+            const data = snap.val() || {};
+            
+            // 按類別分組
+            const grouped = {};
+            Object.values(data).forEach(item => {
+                if(!grouped[item.category]) grouped[item.category] = [];
+                grouped[item.category].push(item);
+            });
+
+            // 產出 HTML
+            Object.keys(grouped).forEach(cat => {
+                list.innerHTML += `<div class="category-title">${cat}</div>`;
+                grouped[cat].forEach(item => {
+                    const isSoldOut = item.isSoldOut === true;
+                    list.innerHTML += `
+                        <div class="item-card ${isSoldOut ? 'sold-out' : ''}" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}', '${item.image || ''}', '${item.category}')">
+                            ${isSoldOut ? '<div class="sold-out-tag">SOLD OUT</div>' : ''}
+                            <img class="item-img" src="${item.image || 'https://via.placeholder.com/150'}" onerror="this.src='https://via.placeholder.com/150'">
+                            <div class="item-info">
+                                <h3>${item.name}</h3>
+                                <div class="price">$${item.price}</div>
+                            </div>
                         </div>
-                        <button class="add-btn">點餐</button>
-                    </div>
-                `;
+                    `;
+                });
             });
         });
 
-        function openModal(name, price, note) {
-            tempItem = { name, price: parseInt(price) };
-            document.getElementById('modal-name').innerText = name;
-            document.getElementById('modal-price').innerText = '$ ' + price;
-            document.getElementById('modal-note').innerText = note || "經典推薦，美味呈現。";
+        function openModal(name, price, note, img, cat) {
+            tempItem = { name, price: parseInt(price), category: cat };
+            document.getElementById('m-name').innerText = name;
+            document.getElementById('m-price').innerText = '$ ' + price;
+            document.getElementById('m-note').innerText = note || "經典推薦，美味呈現。";
+            document.getElementById('m-img').src = img || 'https://via.placeholder.com/300';
             document.getElementById('detail-modal').style.display = 'flex';
         }
+
         function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
         
-        function addToCartFromModal() {
+        function addFromModal() {
             cart.push(tempItem);
             document.getElementById('cart-info').innerText = `🛒 已選 ${cart.length} 項餐點`;
             closeModal();
@@ -102,9 +138,9 @@
             db.ref('orders_v2').push({
                 tableId, items: cart, totalAmount: total, timestamp: Date.now(), payStatus: "尚未結帳"
             }).then(() => {
-                alert('訂單已送達！');
+                alert('訂單已成功送出！');
                 cart = [];
-                document.getElementById('cart-info').innerText = '🛒 尚未點餐';
+                document.getElementById('cart-info').innerText = '🛒 尚未挑選餐點';
             });
         }
     </script>
