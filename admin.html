@@ -2,16 +2,15 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 接單看板 V2</title>
+    <title>BlingOrder | 接單看板 V2.2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
-        .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border-left: 10px solid #ff85a2; box-shadow: 0 4px 10px rgba(0,0,0,0.05); position: relative; }
-        .table-no { font-size: 32px; font-weight: bold; color: #ff85a2; border-bottom: 2px solid #fff0f3; margin-bottom: 10px; }
-        .item-list { margin: 10px 0; }
-        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #fce7f3; }
-        .cat-tag { font-size: 10px; color: #9b87f5; background: #f8f7ff; padding: 2px 6px; border-radius: 4px; margin-right: 8px; }
+        .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border-left: 10px solid #ff85a2; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .table-no { font-size: 36px; font-weight: bold; color: #ff85a2; margin-bottom: 10px; border-bottom: 2px solid #fff0f3; }
+        .item-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; align-items: center; }
+        .cat-tag { font-size: 11px; background: #f0ecff; color: #9b87f5; padding: 3px 8px; border-radius: 4px; margin-right: 10px; font-weight: bold; }
         .btn-group { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
         button { border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-pay { background: #4CAF50; color: white; }
@@ -19,7 +18,7 @@
     </style>
 </head>
 <body>
-    <h2 style="color:#ff85a2; text-align:center;">🌸 BlingOrder 接單中心 (類別排序版)</h2>
+    <h2 style="color:#ff85a2; text-align:center;">🌸 接單中心 (類別自動彙整版)</h2>
     <div id="order-list"></div>
 
     <script>
@@ -33,8 +32,8 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 定義排序權重
-        const catWeight = { "飲品": 1, "炸物": 2, "昭和小食": 3, "甜點": 4, "其他": 5 };
+        // 預設權重（如果你有新類別，沒寫在這裡的會排在最後面）
+        const catWeight = { "飲品": 1, "炸物": 2, "昭和小食": 3, "甜點": 4 };
 
         db.ref('orders_v2').on('value', snap => {
             const list = document.getElementById('order-list');
@@ -42,26 +41,29 @@
             snap.forEach(child => {
                 const o = child.val();
                 if(o.payStatus === "尚未結帳") {
-                    // 對訂單內項目進行排序
+                    // 自動按類別排序邏輯
                     const sortedItems = [...(o.items || [])].sort((a, b) => {
-                        return (catWeight[a.category] || 99) - (catWeight[b.category] || 99);
+                        const weightA = catWeight[a.category] || 999;
+                        const weightB = catWeight[b.category] || 999;
+                        if (weightA !== weightB) return weightA - weightB;
+                        return a.category.localeCompare(b.category); // 同權重則按名稱排
                     });
 
                     list.innerHTML += `
                         <div class="order-card">
                             <div class="table-no">桌號：${o.tableId}</div>
-                            <div class="item-list">
+                            <div>
                                 ${sortedItems.map(i => `
                                     <div class="item-row">
-                                        <span><span class="cat-tag">${i.category || '一般'}</span> <b>${i.name}</b></span>
-                                        <span>x1</span>
+                                        <span><span class="cat-tag">${i.category}</span><b>${i.name}</b></span>
+                                        <span>x 1</span>
                                     </div>
                                 `).join('')}
                             </div>
-                            <div style="font-size:18px; text-align:right; margin-top:10px;">總計：<b>$${o.totalAmount}</b></div>
+                            <div style="text-align:right; font-size:20px; margin-top:15px;">總計: <b style="color:#ff85a2">$${o.totalAmount}</b></div>
                             <div class="btn-group">
-                                <button class="btn-pay" onclick="updatePay('${child.key}', '已結帳')">一般結帳</button>
-                                <button class="btn-free" onclick="updatePay('${child.key}', '免單')">✨ 免單招待</button>
+                                <button class="btn-pay" onclick="updatePay('${child.key}', '已結帳')">結帳</button>
+                                <button class="btn-free" onclick="updatePay('${child.key}', '免單')">✨ 免單</button>
                             </div>
                         </div>
                     `;
