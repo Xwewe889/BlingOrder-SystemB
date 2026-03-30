@@ -1,96 +1,77 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder 管理後台</title>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <title>BlingOrder | 1.接單看板</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; background: #2d3436; color: white; padding: 20px; }
-        .order-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-        .order-card { background: #353b48; border-radius: 15px; padding: 18px; border-left: 10px solid #ff7675; }
-        .order-card.paid { border-left-color: #fdcb6e; }
-        .item-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #444; }
-        .total-price { color: #ffe66d; font-size: 24px; font-weight: bold; text-align: right; margin-top: 15px; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        button { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .pay-btn { background: #55efc4; }
-        .serve-btn { background: #0984e3; color: white; grid-column: span 2; }
-        .free-btn { background: #a29bfe; }
+        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
+        .order-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 25px; border-left: 10px solid #ff85a2; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .table-no { font-size: 32px; font-weight: bold; color: #ff85a2; margin-bottom: 15px; }
+        .item-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
+        .cat-tag { font-size: 11px; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; margin-right: 5px; color: #888; }
+        .btn-pay { background: #4CAF50; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 0 #3e8e41; transition: 0.1s; }
+        .btn-free { background: #9b87f5; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-left: 12px; box-shadow: 0 5px 0 #7b6ac5; }
+        .btn-pay:active, .btn-free:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
+    <h2 style="color:#ff85a2; text-align:center;">🌸 1.現場接單中心 (V2)</h2>
+    <div id="order-list"></div>
+    <script>
+        // Firebase 配置
+        const firebaseConfig = { 
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
+            authDomain: "blingorder.firebaseapp.com", 
+            projectId: "blingorder", 
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
+        };
+        firebase.initializeApp(firebaseConfig); 
+        const db = firebase.database();
 
-<div id="voiceBtn" style="background:#e17055; padding:15px; text-align:center; border-radius:10px; cursor:pointer; margin-bottom:20px; font-weight:bold;">🔊 點此開啟語音通知功能</div>
-<div class="order-container" id="orderList"></div>
+        // 分類排序權重
+        const catOrder = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
 
-<script>
-    const firebaseConfig = { 
-        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
-        authDomain: "blingorder.firebaseapp.com", 
-        projectId: "blingorder", 
-        databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
-        storageBucket: "blingorder.firebasestorage.app", 
-        appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
-    };
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    let voiceOn = false;
-    document.getElementById('voiceBtn').onclick = function() {
-        voiceOn = true;
-        this.innerText = "語音系統運行中...";
-        this.style.background = "#55efc4";
-        speak("語音啟動");
-    };
-
-    function speak(t) { if(voiceOn) { const m = new SpeechSynthesisUtterance(t); m.lang='zh-TW'; window.speechSynthesis.speak(m); } }
-
-    database.ref('orders').on('value', (snapshot) => {
-        const list = document.getElementById('orderList');
-        const data = snapshot.val();
-        
-        // 新訂單聲音
-        const currentCount = document.querySelectorAll('.order-card').length;
-        if(data && Object.keys(data).length > currentCount) speak("您有新訂單");
-
-        list.innerHTML = "";
-        if(!data) return;
-
-        Object.keys(data).reverse().forEach(key => {
-            const o = data[key];
-            if(o.status === "已出餐") return;
-
-            const isPaid = (o.status === "已結帳" || o.status === "招待免單");
-            let itemsHtml = "";
-            if(o.items) {
-                o.items.forEach(i => {
-                    itemsHtml += `<div class="item-row"><span>${i.name} x${i.count}</span><span>$${i.price}</span></div>`;
-                });
-            }
-
-            list.innerHTML += `
-                <div class="order-card ${isPaid ? 'paid' : ''}">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                        <b style="font-size:18px;">桌號：${o.table}</b>
-                        <span style="background:#444; padding:2px 8px; border-radius:5px; font-size:12px;">${o.status}</span>
-                    </div>
-                    ${itemsHtml}
-                    <div class="total-price">$${o.total}</div>
-                    <div class="btn-group">
-                        ${!isPaid ? `
-                            <button class="pay-btn" onclick="update('${key}','已結帳')">結帳</button>
-                            <button class="free-btn" onclick="free('${key}')">招待</button>
-                        ` : `
-                            <button class="serve-btn" onclick="update('${key}','已出餐')">完成出餐 (結案)</button>
-                        `}
-                    </div>
-                </div>`;
+        // 監聽訂單 (路徑: orders_v2)
+        db.ref('orders_v2').on('value', snap => {
+            const list = document.getElementById('order-list'); 
+            list.innerHTML = '';
+            
+            snap.forEach(child => {
+                const o = child.val(); 
+                // 僅顯示尚未結帳的訂單
+                if(o.payStatus === "尚未結帳") {
+                    // 依照分類排序餐點
+                    const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
+                    
+                    list.innerHTML += `
+                        <div class="order-card">
+                            <div class="table-no">桌號：${o.tableId || '外帶'}</div>
+                            <div>
+                                ${sortedItems.map(i => `
+                                    <div class="item-row">
+                                        <span><span class="cat-tag">${i.category || '一般'}</span><b>${i.name}</b></span>
+                                        <span>x ${i.count || 1}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div style="text-align:right; margin-top:20px;">
+                                <button class="btn-pay" onclick="updatePay('${child.key}','已結帳')">現金結帳 $${o.totalAmount || 0}</button>
+                                <button class="btn-free" onclick="updatePay('${child.key}','免單')">✨ 招待免單</button>
+                            </div>
+                        </div>`;
+                }
+            });
         });
-    });
 
-    function update(k, s) { database.ref('orders/'+k).update({status:s}); }
-    function free(k) { if(confirm("招待免單？")) database.ref('orders/'+k).update({status:"招待免單", total:0}); }
-</script>
+        // 更新付款狀態
+        function updatePay(k, s) { 
+            if(confirm(`確定標記為 ${s} 嗎？`)) {
+                db.ref('orders_v2/'+k).update({ payStatus: s }); 
+            }
+        }
+    </script>
 </body>
 </html>
