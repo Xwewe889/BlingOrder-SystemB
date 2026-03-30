@@ -21,7 +21,7 @@
         .stat-card .value { font-size: 2rem; font-weight: bold; color: var(--dark-pink); margin: 10px 0; }
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .chart-title { font-weight: bold; color: var(--dark-pink); margin-bottom: 15px; display: flex; align-items: center; }
+        .chart-title { font-weight: bold; color: var(--dark-pink); margin-bottom: 15px; }
         .ranking-list { list-style: none; padding: 0; }
         .ranking-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
         @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
@@ -35,8 +35,8 @@
         </header>
 
         <div class="stats-grid">
-            <div class="stat-card"><h3>📅 本日營收</h3><div class="value" id="today-revenue">$0</div></div>
-            <div class="stat-card"><h3>📅 昨日營收</h3><div class="value" id="yesterday-revenue">$0</div></div>
+            <div class="stat-card"><h3>📅 本日營收 (<span id="t-date">--/--</span>)</h3><div class="value" id="today-revenue">$0</div></div>
+            <div class="stat-card"><h3>📅 昨日營收 (<span id="y-date">--/--</span>)</h3><div class="value" id="yesterday-revenue">$0</div></div>
             <div class="stat-card"><h3>📊 本月累計</h3><div class="value" id="month-revenue">$0</div></div>
             <div class="stat-card"><h3>📈 歷史總營收</h3><div class="value" id="total-revenue">$0</div></div>
         </div>
@@ -48,7 +48,7 @@
             </div>
             <div class="chart-container">
                 <div class="chart-title">🏆 銷售排行榜</div>
-                <ul class="ranking-list" id="ranking-list"><li>載入中...</li></ul>
+                <ul class="ranking-list" id="ranking-list"></ul>
             </div>
         </div>
     </div>
@@ -61,24 +61,26 @@
             databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
             appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
 
-        function formatCurrency(num) { return '$' + Number(num).toLocaleString(); }
-
         function updateDashboard() {
+            const now = new Date();
+            const todayStr = now.toLocaleDateString('zh-TW');
+            const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
+            const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
+
+            // 更新介面上的日期文字
+            document.getElementById('t-date').innerText = (now.getMonth()+1) + '/' + now.getDate();
+            document.getElementById('y-date').innerText = (yesterday.getMonth()+1) + '/' + yesterday.getDate();
+
             db.ref('orders').once('value', (snapshot) => {
                 const orders = snapshot.val() || {};
-                const now = new Date();
-                const todayStr = now.toLocaleDateString('zh-TW');
-                const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
-                const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
-
                 let todayRev = 0, yesterdayRev = 0, monthRev = 0, totalRev = 0;
                 let itemCounts = {};
 
                 Object.values(orders).forEach(order => {
-                    const amount = parseInt(order.totalAmount || 0);
+                    const amount = parseInt(order.totalAmount || order.totalPrice || 0);
                     const orderDate = new Date(order.timestamp).toLocaleDateString('zh-TW');
                     const orderMonth = new Date(order.timestamp).getMonth();
 
@@ -89,17 +91,17 @@
 
                     if (order.items) {
                         order.items.forEach(item => {
-                            itemCounts[item.name] = (itemCounts[item.name] || 0) + (item.quantity || 1);
+                            const name = item.name || "未知品項";
+                            itemCounts[name] = (itemCounts[name] || 0) + (item.quantity || 1);
                         });
                     }
                 });
 
-                document.getElementById('today-revenue').innerText = formatCurrency(todayRev);
-                document.getElementById('yesterday-revenue').innerText = formatCurrency(yesterdayRev);
-                document.getElementById('month-revenue').innerText = formatCurrency(monthRev);
-                document.getElementById('total-revenue').innerText = formatCurrency(totalRev);
+                document.getElementById('today-revenue').innerText = '$' + todayRev.toLocaleString();
+                document.getElementById('yesterday-revenue').innerText = '$' + yesterdayRev.toLocaleString();
+                document.getElementById('month-revenue').innerText = '$' + monthRev.toLocaleString();
+                document.getElementById('total-revenue').innerText = '$' + totalRev.toLocaleString();
                 document.getElementById('update-time').innerText = `最後更新：${new Date().toLocaleString()}`;
-
                 updateCharts(itemCounts);
             });
         }
@@ -107,11 +109,8 @@
         let pieChart;
         function updateCharts(itemCounts) {
             const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
-            const labels = sortedItems.map(i => i[0]);
-            const data = sortedItems.map(i => i[1]);
-
             const listEl = document.getElementById('ranking-list');
-            listEl.innerHTML = sortedItems.map((item, index) => 
+            listEl.innerHTML = sortedItems.slice(0, 15).map((item, index) => 
                 `<li class="ranking-item"><span>${index + 1}. ${item[0]}</span><span>${item[1]} 份</span></li>`
             ).join('');
 
@@ -120,9 +119,9 @@
             pieChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: labels.slice(0, 8),
+                    labels: sortedItems.slice(0, 8).map(i => i[0]),
                     datasets: [{
-                        data: data.slice(0, 8),
+                        data: sortedItems.slice(0, 8).map(i => i[1]),
                         backgroundColor: ['#ffafbd', '#ffc3a0', '#ff9a9e', '#fad0c4', '#a1c4fd', '#c2e9fb', '#fbc2eb', '#a6c1ee']
                     }]
                 }
