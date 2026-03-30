@@ -2,40 +2,49 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 菜單管理 V2.1</title>
+    <title>BlingOrder | 菜單進階管理 V2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 15px; max-width: 700px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        input, textarea, select { width: 100%; padding: 12px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        .full-width { grid-column: span 2; }
-        button { background: #ff85a2; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .item-list { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
-        .item-card { background: #fffafb; padding: 10px; border: 1px solid #fce7f3; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-        .cat-tag { font-size: 10px; background: #9b87f5; color: white; padding: 2px 6px; border-radius: 4px; margin-right: 5px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .form-group { background: #fff5f7; padding: 20px; border-radius: 12px; border: 1px solid #fce7f3; margin-bottom: 20px; }
+        .row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 10px; margin-bottom: 10px; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { background: #ff85a2; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-add { background: #9b87f5; width: 100%; margin-top: 10px; }
+        .item-list { margin-top: 20px; }
+        .item-row { display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 3fr 1fr; gap: 10px; padding: 10px; border-bottom: 1px solid #eee; align-items: center; font-size: 13px; }
+        .header-row { font-weight: bold; background: #f8f7ff; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 style="color:#ff85a2; text-align:center;">🟣 菜單進階管理 (V2.1)</h2>
-        <div class="form-grid">
-            <input type="text" id="name" placeholder="餐點名稱">
-            <input type="number" id="price" placeholder="價格">
-            <select id="category">
-                <option value="昭和小食">昭和小食</option>
-                <option value="飲品">飲品</option>
-                <option value="甜點">甜點</option>
-                <option value="炸物">炸物</option>
-                <option value="其他">其他</option>
-            </select>
-            <input type="text" id="image" placeholder="圖片連結 (URL)">
-            <textarea id="note" class="full-width" placeholder="餐點介紹 (會顯示在詳情彈窗)"></textarea>
+        <h2 style="color:#ff85a2; text-align:center;">🟣 V2 菜單管理系統</h2>
+        
+        <div class="form-group">
+            <h3>新增餐點</h3>
+            <div class="row">
+                <input type="text" id="name" placeholder="餐點名稱">
+                <input type="number" id="price" placeholder="價格">
+                <select id="category">
+                    <option value="飲品">飲品</option>
+                    <option value="炸物">炸物</option>
+                    <option value="昭和小食">昭和小食</option>
+                    <option value="甜點">甜點</option>
+                </select>
+                <input type="text" id="image" placeholder="圖片路徑 (例如: images/tea.jpg)">
+            </div>
+            <textarea id="note" placeholder="餐點備註/詳情介紹"></textarea>
+            <button class="btn-add" onclick="addItem()">正式上架到 V2 菜單庫</button>
         </div>
-        <button onclick="addItem()">正式上架到 V2 菜單</button>
 
-        <div id="list" class="item-list"></div>
+        <div class="item-list" id="item-list">
+            <div class="item-row header-row">
+                <div>圖片</div><div>名稱</div><div>類別</div><div>價格</div><div>備註</div><div>操作</div>
+            </div>
+            <div id="list-content"></div>
+        </div>
     </div>
 
     <script>
@@ -50,32 +59,38 @@
         const db = firebase.database();
 
         function addItem() {
-            const data = {
-                name: document.getElementById('name').value,
-                price: parseInt(document.getElementById('price').value),
-                category: document.getElementById('category').value,
-                image: document.getElementById('image').value,
-                note: document.getElementById('note').value
-            };
-            if(!data.name || !data.price) return alert('名稱與價格必填');
-            db.ref('menu_v2').push(data).then(() => {
+            const name = document.getElementById('name').value;
+            const price = document.getElementById('price').value;
+            const category = document.getElementById('category').value;
+            const image = document.getElementById('image').value;
+            const note = document.getElementById('note').value;
+
+            if(!name || !price) return alert('請輸入名稱與價格');
+
+            db.ref('menu_v2').push({
+                name, price: parseInt(price), category, image, note
+            }).then(() => {
                 alert('上架成功！');
-                document.querySelectorAll('input, textarea').forEach(el => el.value = '');
+                document.getElementById('name').value = '';
+                document.getElementById('price').value = '';
+                document.getElementById('image').value = '';
+                document.getElementById('note').value = '';
             });
         }
 
         db.ref('menu_v2').on('value', snap => {
-            const list = document.getElementById('list');
-            list.innerHTML = '<h3>目前已上架</h3>';
+            const content = document.getElementById('list-content');
+            content.innerHTML = '';
             snap.forEach(child => {
                 const item = child.val();
-                list.innerHTML += `
-                    <div class="item-card">
-                        <div>
-                            <span class="cat-tag">${item.category}</span>
-                            <b>${item.name}</b> ($${item.price})
-                        </div>
-                        <button onclick="db.ref('menu_v2/${child.key}').remove()" style="width:auto; padding:5px 10px; background:#ff5f6d;">刪除</button>
+                content.innerHTML += `
+                    <div class="item-row">
+                        <div><img src="${item.image}" style="width:30px; height:30px; object-fit:cover; border-radius:4px;" onerror="this.src='https://via.placeholder.com/30'"></div>
+                        <div><b>${item.name}</b></div>
+                        <div>${item.category}</div>
+                        <div>$${item.price}</div>
+                        <div style="color:#888; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.note || ''}</div>
+                        <div><button onclick="db.ref('menu_v2/${child.key}').remove()" style="background:#ff5f6d; padding:5px 10px; font-size:11px;">刪除</button></div>
                     </div>
                 `;
             });
