@@ -59,39 +59,35 @@
                 const todayStr = new Date().toLocaleDateString('zh-TW');
 
                 if (data) {
-                    // 將資料轉成陣列並按時間排序
-                    const sortedOrders = Object.keys(data).map(key => ({
-                        id: key,
-                        ...data[key]
-                    })).sort((a, b) => b.timestamp - a.timestamp);
+                    const sortedOrders = Object.keys(data).map(key => ({ id: key, ...data[key] }))
+                                             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
                     sortedOrders.forEach(order => {
-                        const date = new Date(order.timestamp);
+                        const date = new Date(order.timestamp || Date.now());
                         const dateStr = date.toLocaleDateString('zh-TW');
                         const timeStr = date.toLocaleTimeString('zh-TW');
                         
-                        // 修正金額抓取邏輯 (相容 totalAmount 或 totalPrice)
-                        const amount = parseInt(order.totalAmount || order.totalPrice || 0);
+                        // 【修正】全自動偵測金額欄位
+                        const amount = parseInt(order.totalAmount || order.totalPrice || order.total_price || 0);
                         if (dateStr === todayStr) totalToday += amount;
                         count++;
 
-                        // 修正品項清單抓取邏輯
-                        let itemsStr = "無品項資料";
+                        // 【修正】全自動偵測品項名稱與數量
+                        let itemsStr = "無品項";
                         if (order.items && Array.isArray(order.items)) {
-                            itemsStr = order.items.map(i => `${i.name || '未知'} x${i.quantity || 1}`).join('、');
+                            itemsStr = order.items.map(i => `${i.name || i.itemName || '未知'} x${i.quantity || i.count || 1}`).join('、');
                         }
                         
-                        // 修正桌號抓取
-                        const table = order.tableId || order.tableName || "未註記";
+                        // 【修正】全自動偵測桌號
+                        const table = order.tableId || order.tableName || order.table || "未註記";
                         
-                        const row = `<tr>
+                        tbody.innerHTML += `<tr>
                             <td>${dateStr} ${timeStr}</td>
                             <td>${table}</td>
                             <td>$${amount}</td>
                             <td>${itemsStr}</td>
                             <td><button class="btn-del" onclick="deleteOrder('${order.id}')">刪除</button></td>
                         </tr>`;
-                        tbody.innerHTML += row;
                     });
                 }
                 document.getElementById('day-sum').innerText = '$' + totalToday.toLocaleString();
@@ -99,11 +95,7 @@
             });
         }
 
-        function deleteOrder(key) {
-            if (confirm('確定要刪除這筆訂單嗎？')) {
-                db.ref('orders/' + key).remove();
-            }
-        }
+        function deleteOrder(key) { if (confirm('確定刪除？')) db.ref('orders/' + key).remove(); }
         loadReport();
     </script>
 </body>

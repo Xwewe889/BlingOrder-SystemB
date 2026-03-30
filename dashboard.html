@@ -20,10 +20,12 @@
         .stat-card h3 { margin: 0; font-size: 1rem; color: #888; }
         .stat-card .value { font-size: 2rem; font-weight: bold; color: var(--dark-pink); margin: 10px 0; }
         .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .chart-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom:20px; }
         .chart-title { font-weight: bold; color: var(--dark-pink); margin-bottom: 15px; }
         .ranking-list { list-style: none; padding: 0; }
-        .ranking-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+        .ranking-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
+        .history-list { list-style: none; padding: 0; }
+        .history-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
         @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -42,14 +44,13 @@
         </div>
 
         <div class="charts-grid">
-            <div class="chart-container">
-                <div class="chart-title">🍎 熱銷品項佔比</div>
-                <canvas id="pieChart"></canvas>
-            </div>
-            <div class="chart-container">
-                <div class="chart-title">🏆 銷售排行榜</div>
-                <ul class="ranking-list" id="ranking-list"></ul>
-            </div>
+            <div class="chart-container"><div class="chart-title">🍎 熱銷品項佔比</div><canvas id="pieChart"></canvas></div>
+            <div class="chart-container"><div class="chart-title">🏆 銷售排行榜</div><ul class="ranking-list" id="ranking-list"></ul></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">🗓️ 每日營收日誌</div>
+            <ul class="history-list" id="history-list"></ul>
         </div>
     </div>
 
@@ -69,30 +70,30 @@
             const todayStr = now.toLocaleDateString('zh-TW');
             const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
             const yesterdayStr = yesterday.toLocaleDateString('zh-TW');
-
-            // 更新介面上的日期文字
             document.getElementById('t-date').innerText = (now.getMonth()+1) + '/' + now.getDate();
             document.getElementById('y-date').innerText = (yesterday.getMonth()+1) + '/' + yesterday.getDate();
 
             db.ref('orders').once('value', (snapshot) => {
                 const orders = snapshot.val() || {};
                 let todayRev = 0, yesterdayRev = 0, monthRev = 0, totalRev = 0;
-                let itemCounts = {};
+                let itemCounts = {}, dailyRev = {};
 
                 Object.values(orders).forEach(order => {
-                    const amount = parseInt(order.totalAmount || order.totalPrice || 0);
-                    const orderDate = new Date(order.timestamp).toLocaleDateString('zh-TW');
-                    const orderMonth = new Date(order.timestamp).getMonth();
-
+                    const amount = parseInt(order.totalAmount || order.totalPrice || order.total_price || 0);
+                    const d = new Date(order.timestamp || Date.now());
+                    const dateStr = d.toLocaleDateString('zh-TW');
+                    
                     totalRev += amount;
-                    if (orderDate === todayStr) todayRev += amount;
-                    if (orderDate === yesterdayStr) yesterdayRev += amount;
-                    if (orderMonth === now.getMonth()) monthRev += amount;
+                    if (dateStr === todayStr) todayRev += amount;
+                    if (dateStr === yesterdayStr) yesterdayRev += amount;
+                    if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) monthRev += amount;
 
-                    if (order.items) {
+                    dailyRev[dateStr] = (dailyRev[dateStr] || 0) + amount;
+
+                    if (order.items && Array.isArray(order.items)) {
                         order.items.forEach(item => {
-                            const name = item.name || "未知品項";
-                            itemCounts[name] = (itemCounts[name] || 0) + (item.quantity || 1);
+                            const name = item.name || item.itemName || "未知";
+                            itemCounts[name] = (itemCounts[name] || 0) + (item.quantity || item.count || 1);
                         });
                     }
                 });
@@ -101,22 +102,26 @@
                 document.getElementById('yesterday-revenue').innerText = '$' + yesterdayRev.toLocaleString();
                 document.getElementById('month-revenue').innerText = '$' + monthRev.toLocaleString();
                 document.getElementById('total-revenue').innerText = '$' + totalRev.toLocaleString();
+                
+                // 更新排行榜與歷史日誌
+                const sortedItems = Object.entries(itemCounts).sort((a,b)=>b[1]-a[1]);
+                document.getElementById('ranking-list').innerHTML = sortedItems.slice(0,10).map((i,idx)=>
+                    `<li class="ranking-item"><span>${idx+1}. ${i[0]}</span><span>${i[1]} 份</span></li>`).join('');
+
+                const sortedHistory = Object.entries(dailyRev).sort((a,b)=>new Date(b[0])-new Date(a[0]));
+                document.getElementById('history-list').innerHTML = sortedHistory.slice(0,7).map(h=>
+                    `<li class="history-item"><span>${h[0]}</span><span style="color:var(--dark-pink);font-weight:bold">$${h[1].toLocaleString()}</span></li>`).join('');
+
+                updateChart(sortedItems);
                 document.getElementById('update-time').innerText = `最後更新：${new Date().toLocaleString()}`;
-                updateCharts(itemCounts);
             });
         }
 
-        let pieChart;
-        function updateCharts(itemCounts) {
-            const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]);
-            const listEl = document.getElementById('ranking-list');
-            listEl.innerHTML = sortedItems.slice(0, 15).map((item, index) => 
-                `<li class="ranking-item"><span>${index + 1}. ${item[0]}</span><span>${item[1]} 份</span></li>`
-            ).join('');
-
+        let chart;
+        function updateChart(sortedItems) {
             const ctx = document.getElementById('pieChart').getContext('2d');
-            if (pieChart) pieChart.destroy();
-            pieChart = new Chart(ctx, {
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
                 type: 'pie',
                 data: {
                     labels: sortedItems.slice(0, 8).map(i => i[0]),
@@ -124,10 +129,10 @@
                         data: sortedItems.slice(0, 8).map(i => i[1]),
                         backgroundColor: ['#ffafbd', '#ffc3a0', '#ff9a9e', '#fad0c4', '#a1c4fd', '#c2e9fb', '#fbc2eb', '#a6c1ee']
                     }]
-                }
+                },
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
-
         updateDashboard();
         setInterval(updateDashboard, 60000);
     </script>
