@@ -2,78 +2,82 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BlingOrder | 布拎布拎喫茶店</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>布拎布拎喫茶店 - 線上點餐 V2</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <style>
-        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; --p-purple: #9b87f5; }
-        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 120px; -webkit-tap-highlight-color: transparent; }
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 2px solid var(--primary-pink); }
-        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
-        .category-title { margin: 25px 15px 12px; font-size: 18px; font-weight: bold; color: var(--p-purple); display: flex; align-items: center; }
-        .category-title::before { content: "✿"; margin-right: 8px; }
-        .menu-container { padding: 0 12px; }
-        .item-card { background: white; border-radius: 18px; padding: 12px; margin-bottom: 15px; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(255,133,162,0.1); position: relative; transition: 0.2s; }
-        .item-card:active { transform: scale(0.97); }
-        .item-img { width: 85px; height: 85px; border-radius: 14px; object-fit: cover; margin-right: 15px; background: #eee; }
-        .item-info h3 { margin: 0; font-size: 16px; color: #444; }
-        .price { color: var(--primary-pink); font-weight: bold; font-size: 18px; margin-top: 6px; }
-        .sold-out { opacity: 0.5; filter: grayscale(1); pointer-events: none !important; }
-        .sold-out-tag { position: absolute; right: 15px; top: 15px; background: #666; color: white; font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: bold; }
-        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; backdrop-filter: blur(3px); }
-        .modal-content { background:white; width:88%; max-width:350px; border-radius:25px; overflow:hidden; position:relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
-        .modal-img { width: 100%; height: 220px; object-fit: cover; }
-        .close-btn { position:absolute; top:15px; right:15px; font-size:32px; color:white; cursor:pointer; text-shadow: 0 2px 8px rgba(0,0,0,0.6); z-index: 1001; }
-        @keyframes slideUp { from { transform: translateY(40px); opacity:0; } to { transform: translateY(0); opacity:1; } }
-        .cart-bar { position:fixed; bottom:30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; background: var(--primary-pink); color:white; padding: 18px 22px; border-radius: 50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 10px 30px rgba(255,133,162,0.5); z-index:900; box-sizing: border-box; }
+        body { font-family: sans-serif; background: #fff0f5; margin: 0; padding: 20px; }
+        .header { text-align: center; color: #ff69b4; font-size: 24px; margin-bottom: 20px; font-weight: bold; }
+        .category-title { background: #ffe4e1; padding: 5px 15px; border-radius: 20px; color: #d02090; display: inline-block; margin-top: 15px; font-size: 14px; }
+        .item-card { background: white; border-radius: 12px; padding: 12px; margin-top: 10px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .item-card img { width: 70px; height: 70px; border-radius: 8px; object-fit: cover; margin-right: 12px; }
+        .item-info { flex: 1; }
+        .item-name { font-weight: bold; font-size: 16px; color: #333; }
+        .item-price { color: #ff69b4; font-size: 15px; margin-top: 4px; }
+        .loading { text-align: center; color: #aaa; margin-top: 50px; }
     </style>
 </head>
 <body>
-    <div class="header"><div class="logo">布拎布拎喫茶店</div></div>
-    <div id="menu-list" class="menu-container"></div>
-    <div id="detail-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">×</span>
-            <img id="m-img" class="modal-img" src="">
-            <div style="padding:22px;">
-                <h2 id="m-name" style="margin:0; color:#444;"></h2>
-                <p id="m-note" style="color:#888; line-height:1.6; margin:12px 0; font-size:14px;"></p>
-                <div id="m-price" style="font-size:24px; color:var(--primary-pink); font-weight:bold;"></div>
-                <button onclick="addFromModal()" style="width:100%; background:var(--primary-pink); color:white; border:none; padding:16px; border-radius:18px; font-size:16px; font-weight:bold; margin-top:15px; box-shadow: 0 4px 0 #e06080;">加入購物車</button>
-            </div>
-        </div>
-    </div>
-    <div class="cart-bar" onclick="submitOrder()">
-        <span id="cart-info">🛒 尚未挑選餐點</span>
-        <span style="font-weight:bold;">送出訂單 ></span>
-    </div>
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
-        firebase.initializeApp(firebaseConfig); const db = firebase.database();
-        let cart = []; let tempItem = null;
-        db.ref('menu_v2').on('value', snap => {
-            const list = document.getElementById('menu-list'); list.innerHTML = ''; const data = snap.val() || {};
-            const grouped = {}; Object.values(data).forEach(i => { if(!grouped[i.category]) grouped[i.category] = []; grouped[i.category].push(i); });
-            Object.keys(grouped).forEach(cat => {
-                list.innerHTML += `<div class="category-title">${cat}</div>`;
-                grouped[cat].forEach(item => {
-                    const isSoldOut = item.isSoldOut === true;
-                    list.innerHTML += `<div class="item-card ${isSoldOut ? 'sold-out' : ''}" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}', '${item.image || ''}', '${item.category}')">
-                        ${isSoldOut ? '<div class="sold-out-tag">SOLD OUT</div>' : ''}<img class="item-img" src="${item.image || 'https://via.placeholder.com/150'}" onerror="this.src='https://via.placeholder.com/150'">
-                        <div class="item-info"><h3>${item.name}</h3><div class="price">$${item.price}</div></div></div>`;
-                });
-            });
-        });
-        function openModal(n, p, nt, img, cat) { tempItem = { name:n, price:parseInt(p), category:cat }; document.getElementById('m-name').innerText = n; document.getElementById('m-price').innerText = '$ ' + p; document.getElementById('m-note').innerText = nt || "經典推薦。"; document.getElementById('m-img').src = img || 'https://via.placeholder.com/300'; document.getElementById('detail-modal').style.display = 'flex'; }
-        function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
-        function addFromModal() { cart.push(tempItem); document.getElementById('cart-info').innerText = `🛒 已選 ${cart.length} 項`; closeModal(); }
-        function submitOrder() {
-            if(!cart.length) return; const tableId = new URLSearchParams(window.location.search).get('table') || '未知';
-            db.ref('orders_v2').push({ tableId, items: cart, totalAmount: cart.reduce((s, i) => s + i.price, 0), timestamp: Date.now(), payStatus: "尚未結帳" }).then(() => {
-                alert('布拎布拎喫茶店感謝您\n訂單已送出\n請先至櫃台結帳(僅收現金，感謝配合)'); cart = []; document.getElementById('cart-info').innerText = '🛒 尚未挑選餐點';
-            });
+
+<div class="header">布拎布拎喫茶店</div>
+<div id="menuContainer">
+    <p class="loading">美味餐點準備中...</p>
+</div>
+
+<script>
+    const firebaseConfig = { 
+        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
+        authDomain: "blingorder.firebaseapp.com", 
+        projectId: "blingorder", 
+        databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
+        storageBucket: "blingorder.firebasestorage.app", 
+        appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // 讀取 V2 Beta 資料夾
+    database.ref('menu_v2_beta').on('value', (snapshot) => {
+        const menuContainer = document.getElementById('menuContainer');
+        menuContainer.innerHTML = "";
+        const data = snapshot.val();
+        
+        if (!data) {
+            menuContainer.innerHTML = "<p style='text-align:center'>目前暫無供應餐點</p>";
+            return;
         }
-    </script>
+
+        // 依類別分組
+        const categories = {};
+        Object.keys(data).forEach(key => {
+            const item = data[key];
+            // 只顯示「在售」的商品
+            if (item.status !== "售完") {
+                const cat = item.category || "精選推薦";
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(item);
+            }
+        });
+
+        // 產生 HTML
+        Object.keys(categories).forEach(catName => {
+            let catHtml = `<div class="category-title">✿ ${catName}</div>`;
+            categories[catName].forEach(item => {
+                catHtml += `
+                    <div class="item-card">
+                        <img src="${item.image}">
+                        <div class="item-info">
+                            <div class="item-name">${item.name}</div>
+                            <div class="item-price">$${item.price}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            menuContainer.innerHTML += catHtml;
+        });
+    });
+</script>
 </body>
 </html>

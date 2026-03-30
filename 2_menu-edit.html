@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder - 菜單管理 V2 (完整版)</title>
+    <title>BlingOrder - 菜單管理 V2 (完整功能版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-storage-compat.js"></script>
@@ -13,43 +13,46 @@
         h2 { color: #6c5ce7; margin-bottom: 20px; border-left: 5px solid #6c5ce7; padding-left: 15px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .upload-area input[type="file"] { position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer; }
-        .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
+        .preview-img { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
         .submit-btn { width: 100%; padding: 15px; background: #6c5ce7; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
         .status-msg { margin-top: 15px; font-size: 14px; color: #6c5ce7; font-weight: bold; text-align: center; }
         
-        /* 列表樣式 */
         .menu-list { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
-        .menu-item { display: flex; align-items: center; background: white; padding: 10px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .menu-item img { width: 60px; height: 60px; border-radius: 4px; margin-right: 15px; object-fit: cover; }
+        .menu-item { display: flex; align-items: center; background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .menu-item img { width: 80px; height: 80px; border-radius: 6px; margin-right: 15px; object-fit: cover; }
+        .menu-item.sold-out { opacity: 0.5; background: #f0f0f0; }
         .menu-item-info { flex-grow: 1; }
-        .menu-item-info h4 { margin: 0; color: #333; }
-        .menu-item-info p { margin: 5px 0 0; font-size: 12px; color: #777; }
-        .delete-btn { color: #ff7675; cursor: pointer; border: none; background: none; font-size: 14px; }
+        .menu-item-info h4 { margin: 0; font-size: 18px; }
+        .btn-group { display: flex; flex-direction: column; gap: 5px; }
+        .btn-group button { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .toggle-btn { background: #fdcb6e; color: #333; }
+        .edit-btn { background: #81ecec; color: #333; }
+        .del-btn { background: #ff7675; color: white; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>● 2. 菜單管理 (上架中心)</h2>
-    <div class="form-grid">
+    <h2 id="formTitle">● 2. 菜單管理 (上架中心)</h2>
+    <input type="hidden" id="editKey"> <div class="form-grid">
         <input type="text" id="itemName" placeholder="餐點名稱">
         <input type="number" id="itemPrice" placeholder="價格">
         <input type="text" id="itemCategory" placeholder="類別 (如：咖啡)">
     </div>
     <div class="upload-area">
-        <div id="uploadPrompt"><p>📷 點擊上傳圖片</p></div>
+        <div id="uploadPrompt"><p>📷 點擊更換圖片 (不選則維持原圖)</p></div>
         <input type="file" id="imageInput" accept="image/*">
         <img id="preview" class="preview-img">
         <input type="hidden" id="imageUrl"> 
     </div>
     <textarea id="itemDesc" rows="2" placeholder="餐點介紹..."></textarea>
-    <button class="submit-btn" id="saveBtn" onclick="saveToFirebase()">正式上架</button>
+    <button class="submit-btn" id="saveBtn" onclick="saveToFirebase()">正式上架 / 更新資料</button>
     <div id="status" class="status-msg"></div>
 
     <div class="menu-list">
-        <h3>📋 目前菜單庫內容 (V2 Beta)</h3>
+        <h3>📋 目前菜單庫 (V2 Beta)</h3>
         <div id="displayArea">載入中...</div>
     </div>
 </div>
@@ -68,7 +71,6 @@
     const database = firebase.database();
     const storage = firebase.storage();
 
-    // 圖片處理邏輯
     const imageInput = document.getElementById('imageInput');
     imageInput.addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -82,61 +84,104 @@
         const storageRef = storage.ref().child('menu_images/' + fileName);
         storageRef.put(file).then(snapshot => snapshot.ref.getDownloadURL()).then(url => {
             document.getElementById('imageUrl').value = url;
-            document.getElementById('status').innerText = "✅ 圖片就緒！";
+            document.getElementById('status').innerText = "✅ 圖片已就緒";
         });
     });
 
-    // 儲存邏輯
     function saveToFirebase() {
         const name = document.getElementById('itemName').value;
         const price = document.getElementById('itemPrice').value;
         const url = document.getElementById('imageUrl').value;
-        if (!name || !price || !url) { alert("請填寫名稱、價格並上傳圖片"); return; }
+        const editKey = document.getElementById('editKey').value;
 
-        database.ref('menu_v2_beta').push({
-            name, price: parseInt(price), 
+        if (!name || !price || !url) { alert("請填寫完整並上傳圖片"); return; }
+
+        const data = {
+            name, price: parseInt(price),
             category: document.getElementById('itemCategory').value || "未分類",
             description: document.getElementById('itemDesc').value,
             image: url,
+            status: "在售",
             updateTime: new Date().toLocaleString()
-        }).then(() => {
-            document.getElementById('status').innerText = "🎉 上架成功！";
-            // 清空輸入
-            document.getElementById('itemName').value = "";
-            document.getElementById('imageUrl').value = "";
-            document.getElementById('preview').style.display = 'none';
-            document.getElementById('uploadPrompt').style.display = 'block';
-        });
+        };
+
+        if(editKey) {
+            // 修改模式
+            database.ref('menu_v2_beta/' + editKey).update(data).then(() => {
+                alert("更新成功！");
+                resetForm();
+            });
+        } else {
+            // 新增模式
+            database.ref('menu_v2_beta').push(data).then(() => {
+                document.getElementById('status').innerText = "🎉 上架成功！";
+                resetForm();
+            });
+        }
     }
 
-    // --- 新增：即時監聽資料庫並顯示 ---
+    function resetForm() {
+        document.getElementById('editKey').value = "";
+        document.getElementById('itemName').value = "";
+        document.getElementById('itemPrice').value = "";
+        document.getElementById('itemCategory').value = "";
+        document.getElementById('itemDesc').value = "";
+        document.getElementById('imageUrl').value = "";
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('uploadPrompt').style.display = 'block';
+        document.getElementById('formTitle').innerText = "● 2. 菜單管理 (上架中心)";
+    }
+
     database.ref('menu_v2_beta').on('value', (snapshot) => {
         const displayArea = document.getElementById('displayArea');
         displayArea.innerHTML = "";
         const data = snapshot.val();
-        if (!data) { displayArea.innerHTML = "目前暫無資料"; return; }
+        if (!data) return;
 
         Object.keys(data).forEach(key => {
             const item = data[key];
+            const isSoldOut = item.status === "售完";
             const html = `
-                <div class="menu-item">
+                <div class="menu-item ${isSoldOut ? 'sold-out' : ''}">
                     <img src="${item.image}">
                     <div class="menu-item-info">
-                        <h4>${item.name} ($${item.price})</h4>
+                        <h4>${item.name} ($${item.price}) ${isSoldOut ? '<span style="color:red">[今日售完]</span>' : ''}</h4>
                         <p>${item.category} | ${item.description || ''}</p>
                     </div>
-                    <button class="delete-btn" onclick="deleteItem('${key}')">刪除</button>
+                    <div class="btn-group">
+                        <button class="toggle-btn" onclick="toggleStatus('${key}', '${item.status}')">切換狀態</button>
+                        <button class="edit-btn" onclick="startEdit('${key}')">修改內容</button>
+                        <button class="del-btn" onclick="deleteItem('${key}')">刪除</button>
+                    </div>
                 </div>
             `;
             displayArea.innerHTML += html;
         });
     });
 
-    function deleteItem(id) {
-        if(confirm("確定要刪除這道餐點嗎？")) {
-            database.ref('menu_v2_beta/' + id).remove();
-        }
+    function toggleStatus(key, currentStatus) {
+        const newStatus = (currentStatus === "在售") ? "售完" : "在售";
+        database.ref('menu_v2_beta/' + key).update({ status: newStatus });
     }
+
+    function startEdit(key) {
+        database.ref('menu_v2_beta/' + key).once('value').then(snapshot => {
+            const item = snapshot.val();
+            document.getElementById('editKey').value = key;
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemPrice').value = item.price;
+            document.getElementById('itemCategory').value = item.category;
+            document.getElementById('itemDesc').value = item.description;
+            document.getElementById('imageUrl').value = item.image;
+            document.getElementById('preview').src = item.image;
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('uploadPrompt').style.display = 'none';
+            document.getElementById('formTitle').innerText = "🟡 正在修改：" + item.name;
+            window.scrollTo(0, 0);
+        });
+    }
+
+    function deleteItem(id) { if(confirm("確定刪除嗎？")) database.ref('menu_v2_beta/' + id).remove(); }
 </script>
 </body>
 </html>
