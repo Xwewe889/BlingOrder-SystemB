@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder | 雙控看板 V2</title>
+    <title>BlingOrder | 1.接單看板 (V2)</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
     <style>
@@ -35,11 +35,12 @@
 <body>
 <div id="voice-overlay"><button class="start-btn" onclick="initVoice()">啟動系統</button></div>
 <div class="admin-header">
-    <h1 style="margin:0; font-size:24px; color:var(--primary-pink);">💎 BlingOrder 看板 (V2)</h1>
+    <h1 style="margin:0; font-size:24px; color:var(--primary-pink);">💎 1.現場接單看板</h1>
     <div class="rev-info"><div id="rev-val" style="font-size:24px; font-weight:bold;">$0</div></div>
 </div>
 <div class="order-list-container" id="list-box"></div>
-<a href="3_report.html" class="report-link">查看今日報表 ⮕</a>
+<a href="3_report.html" class="report-link">查看今日報表明細 (3_report.html) ⮕</a>
+
 <script>
     const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
     firebase.initializeApp(firebaseConfig);
@@ -57,7 +58,10 @@
             const o = child.val(); const id = child.key;
             const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
             if (orderDate === todayStr) {
-                if (o.payStatus === "已結帳" || o.payStatus === "免單") todaySum += parseInt(o.totalAmount || 0);
+                // 修正：強制轉換為數字 Number()，避免 0870150 這種字串串接錯誤
+                if (o.payStatus === "已結帳" || o.payStatus === "免單") {
+                    todaySum += Number(o.totalAmount || 0);
+                }
                 if (o.status !== "已出餐") {
                     currentIds.add(id);
                     if (knownIds !== null && !knownIds.has(id)) shouldSpeak = true;
@@ -66,7 +70,7 @@
                     const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
                     listBox.innerHTML = `
                         <div class="order-row">
-                            <div class="table-box"><div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : (o.tableId || '外帶') + '桌'}</div></div>
+                            <div class="table-box"><div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : (o.tableId || '外送') + '桌'}</div></div>
                             <div class="items-box"><div class="item-detail">${sortedItems.map(i => `<div><span class="cat-tag">${i.category||'一般'}</span>${i.name}<span class="item-count">x ${i.count||1}</span></div>`).join('')}</div></div>
                             <div class="action-box">
                                 <div class="price-text">$${o.totalAmount || 0}</div>
@@ -79,6 +83,7 @@
         });
         if (knownIds === null) { knownIds = currentIds; } 
         else { if (shouldSpeak && isSystemReady) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance("新訂單")); } knownIds = currentIds; }
+        // 營收數字格式化
         document.getElementById('rev-val').innerText = "$" + todaySum.toLocaleString();
     });
 
