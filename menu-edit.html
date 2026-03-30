@@ -7,38 +7,33 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: sans-serif; background: #fdf2f8; padding: 10px; }
-        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 15px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         .form-group { background: #fff5f7; padding: 20px; border-radius: 12px; border: 1px solid #fce7f3; margin-bottom: 20px; }
         .input-row { display: grid; grid-template-columns: 1.5fr 0.8fr 1fr 2fr; gap: 10px; margin-bottom: 10px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         .cat-helper { margin: 5px 0 15px; display: flex; flex-wrap: wrap; gap: 8px; }
         .cat-tag-btn { background: #ffe4e9; color: #ff85a2; border: 1px solid #ff85a2; padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; }
-        .cat-tag-btn:hover { background: #ff85a2; color: white; }
-        button.btn-main { background: #9b87f5; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        .item-list { margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; }
+        .btn-main { background: #9b87f5; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; }
         .item-row { display: grid; grid-template-columns: 50px 1.5fr 1fr 1fr 2fr 80px; gap: 10px; padding: 12px; border-bottom: 1px solid #eee; align-items: center; font-size: 13px; }
         .header-row { font-weight: bold; background: #f8f7ff; border-radius: 8px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 style="color:#ff85a2; text-align:center;">🌸 BlingOrder 菜單自由管理 (V2.2)</h2>
-        
+        <h2 style="color:#ff85a2; text-align:center;">🌸 BlingOrder 菜單管理 (V2.2)</h2>
         <div class="form-group">
             <h3>新增餐點</h3>
             <div class="input-row">
-                <input type="text" id="name" placeholder="餐點名稱 (如: 冰淇淋蘇打)">
+                <input type="text" id="name" placeholder="餐點名稱">
                 <input type="number" id="price" placeholder="價格">
-                <input type="text" id="category" placeholder="填寫類別 (或點下方快選)">
-                <input type="text" id="image" placeholder="圖片路徑 (images/...)">
+                <input type="text" id="category" placeholder="填寫類別">
+                <input type="text" id="image" placeholder="圖片路徑 (如: images/tea.jpg)">
             </div>
             <div style="font-size:12px; color:#888;">現有類別快選：</div>
-            <div id="category-helper" class="cat-helper">
-                </div>
+            <div id="category-helper" class="cat-helper"></div>
             <textarea id="note" placeholder="餐點詳情介紹..."></textarea>
             <button class="btn-main" onclick="addItem()">正式上架到 V2 菜單</button>
         </div>
-
         <div class="item-list">
             <div class="item-row header-row">
                 <div>圖</div><div>名稱</div><div>類別</div><div>價格</div><div>備註</div><div>操作</div>
@@ -46,7 +41,6 @@
             <div id="list-content"></div>
         </div>
     </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
@@ -64,16 +58,11 @@
             const category = document.getElementById('category').value || '未分類';
             const image = document.getElementById('image').value;
             const note = document.getElementById('note').value;
-
-            if(!name || !price) return alert('名稱與價格是必填的喔！');
-
-            db.ref('menu_v2').push({
-                name, price: parseInt(price), category, image, note
-            }).then(() => {
-                alert('餐點已成功上架！');
+            if(!name || !price) return alert('名稱與價格是必填');
+            db.ref('menu_v2').push({ name, price: parseInt(price), category, image, note }).then(() => {
+                alert('上架成功！');
                 document.getElementById('name').value = '';
                 document.getElementById('price').value = '';
-                document.getElementById('category').value = '';
                 document.getElementById('image').value = '';
                 document.getElementById('note').value = '';
             });
@@ -82,28 +71,20 @@
         db.ref('menu_v2').on('value', snap => {
             const content = document.getElementById('list-content');
             const helper = document.getElementById('category-helper');
-            content.innerHTML = '';
-            helper.innerHTML = '';
-            
+            content.innerHTML = ''; helper.innerHTML = '';
             let categories = new Set();
-
             snap.forEach(child => {
                 const item = child.val();
                 if(item.category) categories.add(item.category);
-
-                content.innerHTML += `
-                    <div class="item-row">
-                        <img src="${item.image}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;" onerror="this.src='https://via.placeholder.com/40'">
-                        <div><b>${item.name}</b></div>
-                        <div style="color:#9b87f5;">${item.category}</div>
-                        <div>$${item.price}</div>
-                        <div style="color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.note || ''}</div>
-                        <button onclick="db.ref('menu_v2/${child.key}').remove()" style="background:#ff5f6d; color:white; border:none; padding:5px; border-radius:4px; font-size:12px;">刪除</button>
-                    </div>
-                `;
+                content.innerHTML += `<div class="item-row">
+                    <img src="${item.image}" style="width:40px; height:40px; object-fit:cover; border-radius:6px;" onerror="this.src='https://via.placeholder.com/40'">
+                    <div><b>${item.name}</b></div>
+                    <div style="color:#9b87f5;">${item.category}</div>
+                    <div>$${item.price}</div>
+                    <div style="color:#aaa; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.note || ''}</div>
+                    <button onclick="db.ref('menu_v2/${child.key}').remove()" style="background:#ff5f6d; color:white; border:none; padding:5px; border-radius:4px; font-size:12px;">刪除</button>
+                </div>`;
             });
-
-            // 更新快選按鈕
             categories.forEach(cat => {
                 helper.innerHTML += `<div class="cat-tag-btn" onclick="document.getElementById('category').value='${cat}'">${cat}</div>`;
             });
