@@ -16,11 +16,11 @@
         .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; transition: 0.3s; }
         .upload-area:hover { background: #f0eeff; }
         .upload-area input[type="file"] { position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer; }
-        .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
+        .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
         .submit-btn { width: 100%; padding: 15px; background: #6c5ce7; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .submit-btn:hover { background: #5649c0; }
         .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
-        .status-msg { margin-top: 15px; font-size: 14px; color: #2ecc71; font-weight: bold; text-align: center; }
+        .status-msg { margin-top: 15px; font-size: 14px; color: #6c5ce7; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -37,7 +37,7 @@
     <div class="upload-area" id="dropZone">
         <div id="uploadPrompt">
             <p style="margin:0; font-size: 16px; color: #6c5ce7;">📷 點擊或拖曳圖片上傳</p>
-            <p style="margin:5px 0 0; font-size: 12px; color: #aaa;">支援 JPG, PNG 格式</p>
+            <p style="margin:5px 0 0; font-size: 12px; color: #aaa;">支援 JPG, PNG 格式 (2MB以下)</p>
         </div>
         <input type="file" id="imageInput" accept="image/*">
         <img id="preview" class="preview-img">
@@ -50,13 +50,13 @@
 </div>
 
 <script>
-    // --- 1. Firebase 配置 (已為 Eden 補全 storageBucket) ---
+    // --- 1. Firebase 配置 (已補全儲存空間地址) ---
     const firebaseConfig = { 
         apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
         authDomain: "blingorder.firebaseapp.com", 
         projectId: "blingorder", 
         databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
-        storageBucket: "blingorder.appspot.com", // 這一行是上傳圖片必備的
+        storageBucket: "blingorder.appspot.com", 
         appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
     };
 
@@ -64,7 +64,7 @@
     const database = firebase.database();
     const storage = firebase.storage();
 
-    // --- 2. 圖片上傳處理邏輯 ---
+    // --- 2. 圖片上傳處理邏輯 (強化版) ---
     const imageInput = document.getElementById('imageInput');
     const uploadPrompt = document.getElementById('uploadPrompt');
     const preview = document.getElementById('preview');
@@ -76,32 +76,37 @@
         const file = e.target.files[0];
         if (!file) return;
 
+        // 檢查檔案大小
+        if (file.size > 2 * 1024 * 1024) { 
+            alert("圖片太大囉！請選擇 2MB 以下的圖片。");
+            return;
+        }
+
         // 顯示預覽圖
         preview.src = URL.createObjectURL(file);
         preview.style.display = 'block';
         uploadPrompt.style.display = 'none';
-        statusDiv.innerText = "正在上傳圖片，請稍候...";
+        statusDiv.innerText = "🚀 正在衝向雲端，請稍候...";
         saveBtn.disabled = true;
 
-        // 開始上傳到 Firebase Storage (資料夾名為 menu_images)
-        const storageRef = storage.ref('menu_images/' + Date.now() + "_" + file.name);
-        const uploadTask = storageRef.put(file);
+        // 指定儲存路徑與檔名
+        const fileName = Date.now() + "_" + file.name;
+        const storageRef = storage.ref().child('menu_images/' + fileName);
 
-        uploadTask.on('state_changed', 
-            null, 
-            (error) => {
-                alert("上傳失敗，請檢查 Firebase Storage 權限：" + error.message);
-                statusDiv.innerText = "上傳失敗";
-                saveBtn.disabled = false;
-            }, 
-            () => {
-                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                    imageUrlField.value = downloadURL; // 取得永久網址
-                    statusDiv.innerText = "✅ 圖片上傳成功！可以點擊下方按鈕上架了。";
-                    saveBtn.disabled = false;
-                });
-            }
-        );
+        // 使用 put 直接上傳
+        storageRef.put(file).then((snapshot) => {
+            console.log('上傳完成，正在取得網址...');
+            return snapshot.ref.getDownloadURL();
+        }).then((downloadURL) => {
+            imageUrlField.value = downloadURL; // 取得永久網址
+            statusDiv.innerText = "✅ 圖片上傳成功！";
+            saveBtn.disabled = false;
+        }).catch((error) => {
+            console.error(error);
+            alert("上傳失敗！\n1. 請確認 Firebase Storage 規則是否已發佈。\n2. 錯誤代碼：" + error.code);
+            statusDiv.innerText = "❌ 上傳失敗";
+            saveBtn.disabled = false;
+        });
     });
 
     // --- 3. 儲存菜單資料 ---
@@ -113,7 +118,7 @@
         const url = document.getElementById('imageUrl').value;
 
         if (!name || !price || !url) {
-            alert("請檢查：名稱、價格、圖片是否都已填寫/上傳？");
+            alert("請填寫名稱、價格，並確保圖片上傳成功。");
             return;
         }
 
@@ -127,19 +132,20 @@
             updateTime: new Date().toLocaleString()
         };
 
-        // 存入 menu_v2_beta 路徑
+        // 存入測試版路徑 menu_v2_beta
         database.ref('menu_v2_beta').push(menuData)
             .then(() => {
-                statusDiv.innerText = "🎉 上架成功！資料已同步至 B 系統菜單。";
-                // 清空欄位以便輸入下一筆
+                statusDiv.innerText = "🎉 餐點已成功同步至 B 系統菜單！";
+                // 清空欄位以便下一筆輸入
                 document.getElementById('itemName').value = "";
                 document.getElementById('itemPrice').value = "";
                 document.getElementById('itemDesc').value = "";
+                document.getElementById('itemCategory').value = "";
                 preview.style.display = 'none';
                 uploadPrompt.style.display = 'block';
                 imageUrlField.value = "";
             })
-            .catch(err => alert("資料儲存失敗：" + err.message));
+            .catch(err => alert("資料庫寫入失敗：" + err.message));
     }
 </script>
 
