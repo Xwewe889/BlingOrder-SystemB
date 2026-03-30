@@ -1,69 +1,147 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>BlingOrder | 2.菜單管理</title>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BlingOrder - 菜單管理 V2</title>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-storage-compat.js"></script>
     <style>
-        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; --dark-pink: #ff85a2; }
-        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .form-group { background: #fff; padding: 20px; border-radius: 15px; border: 2px solid var(--p-purple); margin-bottom: 30px; }
-        .input-row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr; gap: 15px; margin-bottom: 15px; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
-        .cat-btn { background: white; color: var(--p-purple); border: 2px solid var(--p-purple); padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; margin-right: 5px; transition: 0.2s; }
-        .cat-btn:hover { background: var(--p-purple); color: white; }
-        .btn-main { background: linear-gradient(145deg, #a692ff, #8b79dd); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; cursor: pointer; font-weight: bold; font-size: 16px; box-shadow: 0 6px 0 #7b6ac5; }
-        .btn-main:active { transform: translateY(4px); box-shadow: 0 2px 0 #7b6ac5; }
-        .btn-update-mode { background: linear-gradient(145deg, var(--dark-pink), #e91e63) !important; box-shadow: 0 6px 0 #d81b60 !important; }
-        .item-row { display: grid; grid-template-columns: 70px 1.5fr 1fr 1fr 2fr 220px; gap: 10px; padding: 15px; background: white; border-radius: 12px; margin-bottom: 10px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .sold-out-status { opacity: 0.5; background: #fafafa; }
-        .op-btn { border: none; padding: 10px 15px; border-radius: 8px; color: white; font-size: 12px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 0 rgba(0,0,0,0.2); margin-right: 5px; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f4f4f9; padding: 20px; }
+        .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 900px; margin: auto; }
+        h2 { color: #6c5ce7; margin-bottom: 20px; border-left: 5px solid #6c5ce7; padding-left: 15px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; transition: 0.3s; }
+        .upload-area:hover { background: #f0eeff; }
+        .upload-area input[type="file"] { position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer; }
+        .preview-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
+        .submit-btn { width: 100%; padding: 15px; background: #6c5ce7; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .submit-btn:hover { background: #5649c0; }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .status-msg { margin-top: 15px; font-size: 14px; color: #2ecc71; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>🟣 2.菜單管理 (立體視覺 V2)</h2>
-        <div class="form-group">
-            <h3 id="mode-text">新增餐點</h3>
-            <div class="input-row">
-                <input type="text" id="name" placeholder="名稱"><input type="number" id="price" placeholder="價格">
-                <input type="text" id="cat" placeholder="類別"><input type="text" id="img" placeholder="圖片路徑">
-            </div>
-            <div id="cat-helper" style="margin-bottom:10px;"></div>
-            <textarea id="note" rows="2" placeholder="餐點詳細介紹..."></textarea><input type="hidden" id="edit-id">
-            <button id="sub-btn" class="btn-main" onclick="handleSubmit()">正式上架到 V2 菜單庫</button>
-            <button id="cancel-btn" style="display:none; background:#ccc; margin-top:15px; box-shadow:0 4px 0 #aaa;" class="btn-main" onclick="resetForm()">取消修改</button>
-        </div>
-        <div id="list-content"></div>
+
+<div class="card">
+    <h2>● 2. 菜單管理 (立體視覺 V2)</h2>
+    
+    <div class="form-grid">
+        <input type="text" id="itemName" placeholder="餐點名稱">
+        <input type="number" id="itemPrice" placeholder="價格 (數字)">
+        <input type="text" id="itemCategory" placeholder="類別 (如：咖啡、小食)">
     </div>
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
-        firebase.initializeApp(firebaseConfig); const db = firebase.database(); let allM = {};
-        function handleSubmit(){
-            const id=document.getElementById('edit-id').value; const data={ name:document.getElementById('name').value, price:parseInt(document.getElementById('price').value), category:document.getElementById('cat').value||'未分類', image:document.getElementById('img').value, note:document.getElementById('note').value, isSoldOut:id?allM[id].isSoldOut:false };
-            if(!data.name||!data.price) return alert('必填');
-            if(id) db.ref('menu_v2/'+id).update(data).then(resetForm); else db.ref('menu_v2').push(data).then(resetForm);
+
+    <div class="upload-area" id="dropZone">
+        <div id="uploadPrompt">
+            <p style="margin:0; font-size: 16px; color: #6c5ce7;">📷 點擊或拖曳圖片上傳</p>
+            <p style="margin:5px 0 0; font-size: 12px; color: #aaa;">支援 JPG, PNG 格式</p>
+        </div>
+        <input type="file" id="imageInput" accept="image/*">
+        <img id="preview" class="preview-img">
+        <input type="hidden" id="imageUrl"> </div>
+    
+    <textarea id="itemDesc" rows="3" placeholder="餐點詳細介紹 (選填)..."></textarea>
+    
+    <button class="submit-btn" id="saveBtn" onclick="saveToFirebase()">正式上架到 V2 菜單庫</button>
+    <div id="status" class="status-msg"></div>
+</div>
+
+<script>
+    // --- 1. Firebase 配置 (已為 Eden 補全 storageBucket) ---
+    const firebaseConfig = { 
+        apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", 
+        authDomain: "blingorder.firebaseapp.com", 
+        projectId: "blingorder", 
+        databaseURL: "https://blingorder-default-rtdb.firebaseio.com", 
+        storageBucket: "blingorder.appspot.com", // 這一行是上傳圖片必備的
+        appId: "1:798993901664:web:9c2023b419ae099fe9fb05" 
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const storage = firebase.storage();
+
+    // --- 2. 圖片上傳處理邏輯 ---
+    const imageInput = document.getElementById('imageInput');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const preview = document.getElementById('preview');
+    const imageUrlField = document.getElementById('imageUrl');
+    const saveBtn = document.getElementById('saveBtn');
+    const statusDiv = document.getElementById('status');
+
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 顯示預覽圖
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        uploadPrompt.style.display = 'none';
+        statusDiv.innerText = "正在上傳圖片，請稍候...";
+        saveBtn.disabled = true;
+
+        // 開始上傳到 Firebase Storage (資料夾名為 menu_images)
+        const storageRef = storage.ref('menu_images/' + Date.now() + "_" + file.name);
+        const uploadTask = storageRef.put(file);
+
+        uploadTask.on('state_changed', 
+            null, 
+            (error) => {
+                alert("上傳失敗，請檢查 Firebase Storage 權限：" + error.message);
+                statusDiv.innerText = "上傳失敗";
+                saveBtn.disabled = false;
+            }, 
+            () => {
+                uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                    imageUrlField.value = downloadURL; // 取得永久網址
+                    statusDiv.innerText = "✅ 圖片上傳成功！可以點擊下方按鈕上架了。";
+                    saveBtn.disabled = false;
+                });
+            }
+        );
+    });
+
+    // --- 3. 儲存菜單資料 ---
+    function saveToFirebase() {
+        const name = document.getElementById('itemName').value;
+        const price = document.getElementById('itemPrice').value;
+        const category = document.getElementById('itemCategory').value;
+        const desc = document.getElementById('itemDesc').value;
+        const url = document.getElementById('imageUrl').value;
+
+        if (!name || !price || !url) {
+            alert("請檢查：名稱、價格、圖片是否都已填寫/上傳？");
+            return;
         }
-        function resetForm(){ document.querySelectorAll('input,textarea').forEach(i=>i.value=''); document.getElementById('edit-id').value=''; document.getElementById('mode-text').innerText="新增餐點"; document.getElementById('sub-btn').classList.remove('btn-update-mode'); document.getElementById('cancel-btn').style.display='none'; }
-        db.ref('menu_v2').on('value', snap => {
-            const list = document.getElementById('list-content'); const helper = document.getElementById('cat-helper'); list.innerHTML = ''; helper.innerHTML = '';
-            allM = snap.val() || {}; let cats = new Set();
-            Object.keys(allM).forEach(id => {
-                const i = allM[id]; if(i.category) cats.add(i.category); const isSold = i.isSoldOut||false;
-                list.innerHTML += `<div class="item-row ${isSold?'sold-out-status':''}">
-                    <img src="${i.image}" style="width:55px; height:55px; object-fit:cover; border-radius:10px;" onerror="this.src='https://via.placeholder.com/55'">
-                    <div><b>${i.name}</b></div><div style="color:var(--p-purple); font-weight:bold;">${i.category}</div><div>$${i.price}</div>
-                    <div style="font-size:12px; color:#888;">${i.note||''}</div>
-                    <div style="text-align:right;"><button class="op-btn" style="background:#4CAF50; box-shadow:0 4px 0 #3e8e41;" onclick="startEdit('${id}')">修改</button>
-                    <button class="op-btn" style="background:#ff5f6d; box-shadow:0 4px 0 #d9534f;" onclick="if(confirm('刪除？'))db.ref('menu_v2/${id}').remove()">刪</button>
-                    <button class="op-btn" style="background:#9b87f5; box-shadow:0 4px 0 #7b6ac5; min-width:90px; ${isSold?'background:#aaa;box-shadow:0 4px 0 #888;':''}" onclick="db.ref('menu_v2/${id}').update({isSoldOut:!isSold})">${isSold?'🔴售完':'🟢在售'}</button></div></div>`;
-            });
-            cats.forEach(c => { helper.innerHTML += `<button class="cat-btn" onclick="document.getElementById('cat').value='${c}'">${c}</button>`; });
-        });
-        function startEdit(id){ const i=allM[id]; document.getElementById('edit-id').value=id; document.getElementById('name').value=i.name; document.getElementById('price').value=i.price; document.getElementById('cat').value=i.category; document.getElementById('img').value=i.image; document.getElementById('note').value=i.note; 
-            document.getElementById('mode-text').innerText="正在修改："+i.name; document.getElementById('sub-btn').classList.add('btn-update-mode'); document.getElementById('cancel-btn').style.display='block'; window.scrollTo(0,0); }
-    </script>
+
+        const menuData = {
+            name: name,
+            price: parseInt(price),
+            category: category,
+            description: desc,
+            image: url,
+            status: "在售",
+            updateTime: new Date().toLocaleString()
+        };
+
+        // 存入 menu_v2_beta 路徑
+        database.ref('menu_v2_beta').push(menuData)
+            .then(() => {
+                statusDiv.innerText = "🎉 上架成功！資料已同步至 B 系統菜單。";
+                // 清空欄位以便輸入下一筆
+                document.getElementById('itemName').value = "";
+                document.getElementById('itemPrice').value = "";
+                document.getElementById('itemDesc').value = "";
+                preview.style.display = 'none';
+                uploadPrompt.style.display = 'block';
+                imageUrlField.value = "";
+            })
+            .catch(err => alert("資料儲存失敗：" + err.message));
+    }
+</script>
+
 </body>
 </html>
