@@ -3,46 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BlingOrder | 碼災重製版 2026/3/30</title>
+    <title>BlingOrder | 布拎布拎喫茶店</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        :root { --p-purple: #9b87f5; --bg-purple: #f5f3ff; }
-        body { font-family: sans-serif; background-color: var(--bg-purple); margin: 0; padding-bottom: 100px; }
-        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; border-bottom: 3px solid var(--p-purple); }
-        .logo { font-size: 18px; font-weight: bold; color: var(--p-purple); }
-        .menu-item { background: white; margin: 10px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .btn-add { background: var(--p-purple); color: white; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; }
+        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; }
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg-pink); margin: 0; padding-bottom: 100px; -webkit-tap-highlight-color: transparent; }
+        .header { background: white; padding: 15px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top:0; z-index: 100; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary-pink); letter-spacing: 1px; }
+        .menu-container { padding: 10px; }
+        .item-card { background: white; border-radius: 15px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(255,133,162,0.1); }
+        .item-info h3 { margin: 0; font-size: 16px; color: #444; }
+        .item-info p { margin: 5px 0 0; font-size: 13px; color: #888; }
+        .price { color: var(--primary-pink); font-weight: bold; font-size: 18px; margin-top: 5px; }
+        .add-btn { background: var(--primary-pink); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: bold; cursor: pointer; }
         
-        /* 詳情彈窗 Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 85%; max-width: 400px; border-radius: 20px; padding: 20px; position: relative; }
-        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #999; }
-        
-        .cart-bar { position: fixed; bottom: 20px; left: 5%; width: 90%; background: var(--p-purple); color: white; padding: 15px; border-radius: 50px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(155,135,245,0.4); }
+        /* Modal 詳情彈窗 */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
+        .modal-content { background:white; width:85%; max-width:350px; border-radius:20px; padding:25px; position:relative; animation: slideUp 0.3s ease-out; }
+        .close-btn { position:absolute; top:15px; right:20px; font-size:24px; color:#ccc; cursor:pointer; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+        .cart-bar { position:fixed; bottom:20px; left:5%; width:90%; background:var(--primary-pink); color:white; padding:15px; border-radius:50px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 8px 20px rgba(255,133,162,0.4); z-index:900; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="logo">💎 BlingOrder 碼災重製版 (V2)</div>
-        <div style="font-size: 10px; color: #aaa;">2026/03/30 重裝上陣</div>
+        <div class="logo">布拎布拎喫茶店</div>
     </div>
 
-    <div id="menu-list"></div>
+    <div id="menu-list" class="menu-container"></div>
 
     <div id="detail-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">×</span>
-            <h3 id="m-name">餐點名稱</h3>
-            <p id="m-note" style="color: #666; font-size: 14px;"></p>
-            <div style="font-size: 20px; color: var(--p-purple); font-weight: bold;">$ <span id="m-price">0</span></div>
-            <button onclick="addFromModal()" style="width:100%; background:var(--p-purple); color:white; border:none; padding:12px; border-radius:10px; margin-top:15px; font-weight:bold;">加入購物車</button>
+            <h2 id="modal-name" style="color:#444;">餐點名稱</h2>
+            <p id="modal-note" style="color:#888; line-height:1.6;"></p>
+            <div id="modal-price" style="font-size:24px; color:var(--primary-pink); font-weight:bold; margin:15px 0;"></div>
+            <button onclick="addToCartFromModal()" style="width:100%; background:var(--primary-pink); color:white; border:none; padding:15px; border-radius:15px; font-size:16px; font-weight:bold;">加入購物車</button>
         </div>
     </div>
 
     <div class="cart-bar" onclick="submitOrder()">
-        <span>🛒 已選 <span id="cart-count">0</span> 項餐點</span>
-        <span style="font-weight: bold;">送出訂單 ></span>
+        <span id="cart-info">🛒 尚未點餐</span>
+        <span style="font-weight:bold;">送出訂單 ></span>
     </div>
 
     <script>
@@ -56,57 +60,51 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let cart = [];
-        let currentItem = null;
+        let tempItem = null;
 
         // 讀取 V2 菜單
         db.ref('menu_v2').on('value', snap => {
-            const items = snap.val() || {};
             const list = document.getElementById('menu-list');
             list.innerHTML = '';
-            Object.keys(items).forEach(id => {
-                const item = items[id];
+            snap.forEach(child => {
+                const item = child.val();
                 list.innerHTML += `
-                    <div class="menu-item" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}')">
-                        <div>
-                            <div style="font-weight:bold">${item.name}</div>
-                            <div style="font-size:12px; color:#999">$${item.price}</div>
+                    <div class="item-card" onclick="openModal('${item.name}', '${item.price}', '${item.note || ''}')">
+                        <div class="item-info">
+                            <h3>${item.name}</h3>
+                            <div class="price">$${item.price}</div>
                         </div>
-                        <button class="btn-add">點餐</button>
+                        <button class="add-btn">點餐</button>
                     </div>
                 `;
             });
         });
 
         function openModal(name, price, note) {
-            currentItem = { name, price: parseInt(price) };
-            document.getElementById('m-name').innerText = name;
-            document.getElementById('m-price').innerText = price;
-            document.getElementById('m-note').innerText = note || "美味準備中...";
+            tempItem = { name, price: parseInt(price) };
+            document.getElementById('modal-name').innerText = name;
+            document.getElementById('modal-price').innerText = '$ ' + price;
+            document.getElementById('modal-note').innerText = note || "經典推薦，美味呈現。";
             document.getElementById('detail-modal').style.display = 'flex';
         }
-
         function closeModal() { document.getElementById('detail-modal').style.display = 'none'; }
-
-        function addFromModal() {
-            cart.push(currentItem);
-            document.getElementById('cart-count').innerText = cart.length;
+        
+        function addToCartFromModal() {
+            cart.push(tempItem);
+            document.getElementById('cart-info').innerText = `🛒 已選 ${cart.length} 項餐點`;
             closeModal();
         }
 
         function submitOrder() {
-            if(cart.length === 0) return alert('購物車是空的喔！');
+            if(cart.length === 0) return;
             const tableId = new URLSearchParams(window.location.search).get('table') || '未知';
             const total = cart.reduce((s, i) => s + i.price, 0);
             db.ref('orders_v2').push({
-                tableId,
-                items: cart,
-                totalAmount: total,
-                timestamp: Date.now(),
-                payStatus: "尚未結帳"
+                tableId, items: cart, totalAmount: total, timestamp: Date.now(), payStatus: "尚未結帳"
             }).then(() => {
-                alert('訂單已送達廚房！');
+                alert('訂單已送達！');
                 cart = [];
-                document.getElementById('cart-count').innerText = '0';
+                document.getElementById('cart-info').innerText = '🛒 尚未點餐';
             });
         }
     </script>

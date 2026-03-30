@@ -1,20 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <title>BlingOrder | 接單看板 V2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0ebff; padding: 20px; }
-        .order-card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; border-left: 10px solid #9b87f5; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .btn-pay { background: #4CAF50; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-free { background: #9b87f5; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-left: 10px; }
+        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
+        .order-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 10px solid #ff85a2; display: flex; justify-content: space-between; align-items: center; }
+        .btn-group button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .btn-pay { background: #4CAF50; color: white; }
+        .btn-free { background: #9b87f5; color: white; }
     </style>
 </head>
 <body>
-    <h2 style="color:#6a5acd">💎 BlingOrder 收單中心 V2</h2>
-    <div id="orders-list"></div>
+    <h2 style="color:#ff85a2">🌸 BlingOrder 接單看板 (V2)</h2>
+    <div id="order-list"></div>
 
     <script>
         const firebaseConfig = {
@@ -28,29 +29,30 @@
         const db = firebase.database();
 
         db.ref('orders_v2').on('value', snap => {
-            const orders = snap.val() || {};
-            const list = document.getElementById('orders-list');
+            const list = document.getElementById('order-list');
             list.innerHTML = '';
-            Object.keys(orders).reverse().forEach(id => {
-                const o = orders[id];
+            snap.forEach(child => {
+                const o = child.val();
                 if(o.payStatus === "尚未結帳") {
                     list.innerHTML += `
                         <div class="order-card">
-                            <div style="font-size:24px; font-weight:bold; color:#6a5acd">桌號：${o.tableId}</div>
-                            <div style="margin:10px 0; padding:10px; background:#f8f7ff; border-radius:5px;">
-                                ${o.items.map(i => i.name+' x1').join('<br>')}
+                            <div>
+                                <div style="font-size:24px; font-weight:bold;">桌號：${o.tableId}</div>
+                                <div style="color:#888;">${o.items.map(i => i.name).join('、')}</div>
+                                <div style="font-size:18px; color:#ff85a2;">$${o.totalAmount}</div>
                             </div>
-                            <div style="font-size:18px; margin-bottom:15px;">總計：<b>$${o.totalAmount}</b></div>
-                            <button class="btn-pay" onclick="setPay('${id}', '已結帳')">結帳完成</button>
-                            <button class="btn-free" onclick="setPay('${id}', '免單')">✨ 免單招待</button>
+                            <div class="btn-group">
+                                <button class="btn-pay" onclick="updateStatus('${child.key}', '已結帳')">結帳</button>
+                                <button class="btn-free" onclick="updateStatus('${child.key}', '免單')">免單</button>
+                            </div>
                         </div>
                     `;
                 }
             });
         });
 
-        function setPay(id, status) {
-            db.ref('orders_v2/'+id).update({ payStatus: status });
+        function updateStatus(key, status) {
+            db.ref('orders_v2/'+key).update({ payStatus: status });
         }
     </script>
 </body>

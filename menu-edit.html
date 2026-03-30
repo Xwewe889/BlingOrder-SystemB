@@ -1,28 +1,27 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
     <title>BlingOrder | 菜單管理 V2</title>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #fdfbff; padding: 20px; }
-        .edit-box { background: white; border: 2px solid #9b87f5; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        input, textarea { width: 95%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; }
-        .btn-save { background: #9b87f5; color: white; border: none; padding: 10px 30px; border-radius: 8px; cursor: pointer; }
-        .item-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        body { font-family: sans-serif; background: #fdf2f8; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 15px; max-width: 600px; margin: auto; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { background: #ff85a2; color: white; border: none; padding: 12px; width: 100%; border-radius: 8px; cursor: pointer; }
+        .item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
-    <h2>🟣 菜單內容重製 (V2)</h2>
-    <div class="edit-box">
-        <h3>新增餐點</h3>
+    <div class="container">
+        <h2>🟣 菜單管理 V2 (含備註)</h2>
         <input type="text" id="name" placeholder="餐點名稱">
         <input type="number" id="price" placeholder="價格">
-        <textarea id="note" placeholder="餐點備註 (會顯示在詳情彈窗中)"></textarea>
-        <button class="btn-save" onclick="addMenu()">確認新增</button>
+        <textarea id="note" placeholder="餐點詳細介紹 (會顯示在詳情彈窗)"></textarea>
+        <button onclick="addItem()">上架餐點</button>
+        <div id="list" style="margin-top:20px;"></div>
     </div>
-    <div id="menu-display"></div>
 
     <script>
         const firebaseConfig = {
@@ -35,29 +34,20 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function addMenu() {
+        function addItem() {
             const name = document.getElementById('name').value;
             const price = document.getElementById('price').value;
             const note = document.getElementById('note').value;
-            if(!name || !price) return alert('名稱與價格必填！');
+            if(!name || !price) return alert('必填');
             db.ref('menu_v2').push({ name, price: parseInt(price), note });
-            document.getElementById('name').value = '';
-            document.getElementById('price').value = '';
-            document.getElementById('note').value = '';
+            document.getElementById('name').value=''; document.getElementById('price').value=''; document.getElementById('note').value='';
         }
 
         db.ref('menu_v2').on('value', snap => {
-            const data = snap.val() || {};
-            const display = document.getElementById('menu-display');
-            display.innerHTML = '<h3>目前已上架餐點</h3>';
-            Object.keys(data).forEach(id => {
-                const item = data[id];
-                display.innerHTML += `
-                    <div class="item-card">
-                        <div><b>${item.name}</b> ($${item.price})</div>
-                        <button onclick="db.ref('menu_v2/${id}').remove()" style="color:red; background:none; border:none; cursor:pointer;">刪除</button>
-                    </div>
-                `;
+            const list = document.getElementById('list');
+            list.innerHTML = '<h3>目前菜單</h3>';
+            snap.forEach(child => {
+                list.innerHTML += `<div class="item"><span>${child.val().name} ($${child.val().price})</span> <a href="#" onclick="db.ref('menu_v2/${child.key}').remove()" style="color:red;">刪除</a></div>`;
             });
         });
     </script>
