@@ -25,19 +25,10 @@
             <div class="sum-box">總訂單數：<span id="order-count">0</span></div>
         </div>
         <table>
-            <thead>
-                <tr>
-                    <th>時間</th>
-                    <th>桌號</th>
-                    <th>金額</th>
-                    <th>品項清單</th>
-                    <th>管理</th>
-                </tr>
-            </thead>
+            <thead><tr><th>時間</th><th>桌號</th><th>金額</th><th>品項清單</th><th>管理</th></tr></thead>
             <tbody id="report-body"></tbody>
         </table>
     </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
@@ -54,8 +45,7 @@
                 const data = snapshot.val();
                 const tbody = document.getElementById('report-body');
                 tbody.innerHTML = '';
-                let totalToday = 0;
-                let count = 0;
+                let totalToday = 0; let count = 0;
                 const todayStr = new Date().toLocaleDateString('zh-TW');
 
                 if (data) {
@@ -65,24 +55,23 @@
                     sortedOrders.forEach(order => {
                         const date = new Date(order.timestamp || Date.now());
                         const dateStr = date.toLocaleDateString('zh-TW');
-                        const timeStr = date.toLocaleTimeString('zh-TW');
                         
-                        // 【修正】全自動偵測金額欄位
-                        const amount = parseInt(order.totalAmount || order.totalPrice || order.total_price || 0);
+                        // 金額抓取 (掃描所有可能欄位)
+                        const amount = parseInt(order.totalAmount || order.totalPrice || order.total_price || order.amount || 0);
                         if (dateStr === todayStr) totalToday += amount;
                         count++;
 
-                        // 【修正】全自動偵測品項名稱與數量
+                        // 桌號修正 (如果是 7 號強制轉為 包廂)
+                        let table = order.tableId || order.tableName || order.table || "未註記";
+                        if (table == "7") table = "包廂";
+
                         let itemsStr = "無品項";
                         if (order.items && Array.isArray(order.items)) {
                             itemsStr = order.items.map(i => `${i.name || i.itemName || '未知'} x${i.quantity || i.count || 1}`).join('、');
                         }
                         
-                        // 【修正】全自動偵測桌號
-                        const table = order.tableId || order.tableName || order.table || "未註記";
-                        
                         tbody.innerHTML += `<tr>
-                            <td>${dateStr} ${timeStr}</td>
+                            <td>${dateStr} ${date.toLocaleTimeString('zh-TW')}</td>
                             <td>${table}</td>
                             <td>$${amount}</td>
                             <td>${itemsStr}</td>
@@ -94,7 +83,6 @@
                 document.getElementById('order-count').innerText = count;
             });
         }
-
         function deleteOrder(key) { if (confirm('確定刪除？')) db.ref('orders/' + key).remove(); }
         loadReport();
     </script>
