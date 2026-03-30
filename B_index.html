@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🧪 測試版 | BlingOrder</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --primary-pink: #ff85a2; --bg-pink: #fff0f3; --p-purple: #9b87f5; }
+        body { font-family: "PingFang TC", sans-serif; background-color: #eee; margin: 0; padding-bottom: 120px; }
+        .test-banner { background: #333; color: #ffeb3b; text-align: center; padding: 5px; font-size: 12px; font-weight: bold; position: sticky; top: 0; z-index: 1000; }
+        .header { background: white; padding: 15px; text-align: center; border-bottom: 2px solid var(--primary-pink); }
+        .item-card { background: white; border-radius: 18px; padding: 12px; margin: 10px; display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .cart-bar { position:fixed; bottom:30px; left: 50%; transform: translateX(-50%); width: 90%; background: #333; color:white; padding: 18px; border-radius: 50px; display:flex; justify-content:space-between; z-index:900; }
+    </style>
+</head>
+<body>
+    <div class="test-banner">🧪 目前為 B 系統測試模式 (不會影響正式營收)</div>
+    <div class="header"><h2>布拎布拎喫茶店 (Beta)</h2></div>
+    <div id="menu-list"></div>
+    <div class="cart-bar" onclick="submitOrder()">
+        <span id="cart-info">🛒 測試挑選中</span>
+        <span>送出測試單 ></span>
+    </div>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ", authDomain: "blingorder.firebaseapp.com", projectId: "blingorder", databaseURL: "https://blingorder-default-rtdb.firebaseio.com", appId: "1:798993901664:web:9c2023b419ae099fe9fb05" };
+        firebase.initializeApp(firebaseConfig); const db = firebase.database();
+        let cart = [];
+        db.ref('menu_v2_beta').on('value', snap => {
+            const list = document.getElementById('menu-list'); list.innerHTML = '';
+            const data = snap.val() || {};
+            Object.values(data).forEach(item => {
+                list.innerHTML += `<div class="item-card" onclick="cart.push({name:'${item.name}',price:${item.price},category:'${item.category}'}); alert('已加入測試車')">
+                    <img src="${item.image}" style="width:60px; height:60px; border-radius:10px; margin-right:15px;">
+                    <div><h3>${item.name}</h3><div style="color:var(--primary-pink)">$${item.price}</div></div></div>`;
+            });
+        });
+        function submitOrder() {
+            if(!cart.length) return;
+            db.ref('orders_v2_beta').push({ tableId: "B-Test", items: cart, totalAmount: cart.reduce((s, i) => s + i.price, 0), timestamp: Date.now(), payStatus: "尚未結帳" }).then(() => {
+                alert('測試訂單已送出至 B 系統！'); cart = [];
+            });
+        }
+    </script>
+</body>
+</html>
