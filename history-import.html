@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 歷史數據補錄系統 (會計專用)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --p-purple: #9b87f5; --bg-purple: #f8f7ff; }
+        body { font-family: sans-serif; background: var(--bg-purple); padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { color: var(--p-purple); text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .form-section { background: #fdfbff; padding: 20px; border-radius: 15px; border: 1px solid #e0d7ff; margin-bottom: 30px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 13px; color: #666; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; }
+        
+        .btn-submit { background: var(--p-purple); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; box-shadow: 0 4px 0 #7b6ac5; }
+        .btn-submit:active { transform: translateY(2px); box-shadow: 0 2px 0 #7b6ac5; }
+
+        .history-list { margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { text-align: left; padding: 12px; background: #f0ecff; color: var(--p-purple); }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .tag-history { background: #eee; color: #666; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📜 歷史數據補錄系統 (V2)</h2>
+        <p style="color:#888; font-size:13px; text-align:center; margin-top:-20px;">專供會計補錄 2/14 ~ 3/29 之截圖數據使用</p>
+
+        <div class="form-section">
+            <div class="input-grid">
+                <div>
+                    <label>消費日期</label>
+                    <input type="date" id="order-date">
+                </div>
+                <div>
+                    <label>大約時間 (可不填，預設中午)</label>
+                    <input type="time" id="order-time" value="12:00">
+                </div>
+                <div>
+                    <label>桌號 (補錄建議統一填「歷史」)</label>
+                    <input type="text" id="table-id" value="歷史">
+                </div>
+                <div>
+                    <label>訂單總金額</label>
+                    <input type="number" id="total-amount" placeholder="請輸入截圖總金額">
+                </div>
+            </div>
+            <div>
+                <label>品項簡述 (例如：冰淇淋蘇打x1, 炸物x2)</label>
+                <input type="text" id="items-note" placeholder="方便日後查帳使用">
+            </div>
+            <button class="btn-submit" onclick="importData()">確認補錄進資料庫</button>
+        </div>
+
+        <div class="history-list">
+            <h3 style="color:#666;">📝 最近補錄紀錄</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>日期</th>
+                        <th>金額</th>
+                        <th>品項</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBTeLTAX-F5i3WHKYY0ITZsla0Qgs5e2zQ",
+            authDomain: "blingorder.firebaseapp.com",
+            projectId: "blingorder",
+            databaseURL: "https://blingorder-default-rtdb.firebaseio.com",
+            appId: "1:798993901664:web:9c2023b419ae099fe9fb05"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 補錄功能
+        function importData() {
+            const date = document.getElementById('order-date').value;
+            const time = document.getElementById('order-time').value;
+            const amount = document.getElementById('total-amount').value;
+            const note = document.getElementById('items-note').value;
+            const table = document.getElementById('table-id').value;
+
+            if(!date || !amount) return alert('日期與金額是必填的！');
+
+            // 組合時間戳記
+            const timestamp = new Date(`${date}T${time}`).getTime();
+
+            const orderData = {
+                tableId: table,
+                totalAmount: parseInt(amount),
+                timestamp: timestamp,
+                payStatus: "已結帳", // 歷史補錄預設為已結帳
+                items: [{ name: note || "歷史補錄項", price: parseInt(amount), category: "其他" }],
+                isHistory: true // 標記為歷史補錄
+            };
+
+            db.ref('orders_v2').push(orderData).then(() => {
+                alert('補錄成功！');
+                document.getElementById('total-amount').value = '';
+                document.getElementById('items-note').value = '';
+            });
+        }
+
+        // 顯示最近補錄
+        db.ref('orders_v2').orderByChild('isHistory').equalTo(true).limitToLast(10).on('value', snap => {
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = '';
+            const data = snap.val() || {};
+            
+            Object.keys(data).reverse().forEach(key => {
+                const o = data[key];
+                const d = new Date(o.timestamp);
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${d.toLocaleDateString('zh-TW')}</td>
+                        <td style="font-weight:bold; color:var(--p-purple);">$ ${o.totalAmount}</td>
+                        <td style="color:#888;">${o.items[0].name}</td>
+                        <td><button onclick="db.ref('orders_v2/${key}').remove()" style="border:none; background:#ff5f6d; color:white; padding:5px 8px; border-radius:5px; cursor:pointer;">刪除</button></td>
+                    </tr>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
