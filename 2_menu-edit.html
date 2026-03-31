@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BlingOrder - 菜單管理 V2 (完整功能版)</title>
+    <title>BlingOrder - 菜單管理 V2 (客製化增強版)</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-storage-compat.js"></script>
@@ -13,6 +13,14 @@
         h2 { color: #6c5ce7; margin-bottom: 20px; border-left: 5px solid #6c5ce7; padding-left: 15px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        
+        /* 客製化勾選區樣式 */
+        .addon-section { background: #f9f8ff; padding: 15px; border-radius: 8px; border: 1px solid #e0dbff; margin-bottom: 15px; }
+        .addon-title { font-weight: bold; color: #6c5ce7; margin-bottom: 10px; display: block; }
+        .addon-grid { display: flex; flex-wrap: wrap; gap: 15px; }
+        .addon-item { display: flex; align-items: center; cursor: pointer; font-size: 14px; }
+        .addon-item input { width: auto; margin-right: 8px; }
+
         .upload-area { border: 2px dashed #6c5ce7; padding: 20px; border-radius: 8px; text-align: center; cursor: pointer; background: #f9f8ff; position: relative; margin-bottom: 15px; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .upload-area input[type="file"] { position: absolute; opacity: 0; left: 0; top: 0; width: 100%; height: 100%; cursor: pointer; }
         .preview-img { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; display: none; margin: 10px auto; border: 2px solid #6c5ce7; }
@@ -25,28 +33,46 @@
         .menu-item.sold-out { opacity: 0.5; background: #f0f0f0; }
         .menu-item-info { flex-grow: 1; }
         .menu-item-info h4 { margin: 0; font-size: 18px; }
+        .addon-tags { font-size: 12px; color: #888; margin-top: 5px; }
         .btn-group { display: flex; flex-direction: column; gap: 5px; }
         .btn-group button { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .toggle-btn { background: #fdcb6e; color: #333; }
-        .edit-btn { background: #81ecec; color: #333; }
+        .toggle-btn { background: #fdcb6e; }
+        .edit-btn { background: #81ecec; }
         .del-btn { background: #ff7675; color: white; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 id="formTitle">● 2. 菜單管理 (上架中心)</h2>
-    <input type="hidden" id="editKey"> <div class="form-grid">
+    <h2 id="formTitle">● 2. 菜單管理 (客製化版本)</h2>
+    <input type="hidden" id="editKey"> 
+    
+    <div class="form-grid">
         <input type="text" id="itemName" placeholder="餐點名稱">
         <input type="number" id="itemPrice" placeholder="價格">
-        <input type="text" id="itemCategory" placeholder="類別 (如：咖啡)">
+        <input type="text" id="itemCategory" placeholder="類別 (如：飲品、昭和小食)">
     </div>
+
+    <div class="addon-section">
+        <span class="addon-title">⚙️ 提供客製化選項 / 素食標記：</span>
+        <div class="addon-grid" id="addonContainer">
+            <label class="addon-item"><input type="checkbox" name="addon" value="冰"> 冰</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="去冰"> 去冰</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="熱"> 熱</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="加糖"> 加糖</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="不加糖"> 不加糖</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="五辛素"> 五辛素</label>
+            <label class="addon-item"><input type="checkbox" name="addon" value="蛋奶素"> 蛋奶素</label>
+        </div>
+    </div>
+
     <div class="upload-area">
         <div id="uploadPrompt"><p>📷 點擊更換圖片 (不選則維持原圖)</p></div>
         <input type="file" id="imageInput" accept="image/*">
         <img id="preview" class="preview-img">
         <input type="hidden" id="imageUrl"> 
     </div>
+
     <textarea id="itemDesc" rows="2" placeholder="餐點介紹..."></textarea>
     <button class="submit-btn" id="saveBtn" onclick="saveToFirebase()">正式上架 / 更新資料</button>
     <div id="status" class="status-msg"></div>
@@ -94,25 +120,29 @@
         const url = document.getElementById('imageUrl').value;
         const editKey = document.getElementById('editKey').value;
 
+        // 取得勾選的 addons
+        const addons = [];
+        document.querySelectorAll('input[name="addon"]:checked').forEach(cb => addons.push(cb.value));
+
         if (!name || !price || !url) { alert("請填寫完整並上傳圖片"); return; }
 
         const data = {
-            name, price: parseInt(price),
+            name, 
+            price: parseInt(price),
             category: document.getElementById('itemCategory').value || "未分類",
             description: document.getElementById('itemDesc').value,
             image: url,
+            addons: addons, // 存儲客製化選項陣列
             status: "在售",
             updateTime: new Date().toLocaleString()
         };
 
         if(editKey) {
-            // 修改模式
             database.ref('menu_v2_beta/' + editKey).update(data).then(() => {
                 alert("更新成功！");
                 resetForm();
             });
         } else {
-            // 新增模式
             database.ref('menu_v2_beta').push(data).then(() => {
                 document.getElementById('status').innerText = "🎉 上架成功！";
                 resetForm();
@@ -130,6 +160,8 @@
         document.getElementById('preview').style.display = 'none';
         document.getElementById('uploadPrompt').style.display = 'block';
         document.getElementById('formTitle').innerText = "● 2. 菜單管理 (上架中心)";
+        // 清除勾選
+        document.querySelectorAll('input[name="addon"]').forEach(cb => cb.checked = false);
     }
 
     database.ref('menu_v2_beta').on('value', (snapshot) => {
@@ -141,12 +173,15 @@
         Object.keys(data).forEach(key => {
             const item = data[key];
             const isSoldOut = item.status === "售完";
+            const addonTags = item.addons ? item.addons.map(a => `<span style="background:#eee;padding:2px 5px;border-radius:4px;margin-right:3px;">${a}</span>`).join('') : '無客製化';
+            
             const html = `
                 <div class="menu-item ${isSoldOut ? 'sold-out' : ''}">
                     <img src="${item.image}">
                     <div class="menu-item-info">
                         <h4>${item.name} ($${item.price}) ${isSoldOut ? '<span style="color:red">[今日售完]</span>' : ''}</h4>
                         <p>${item.category} | ${item.description || ''}</p>
+                        <div class="addon-tags">選項：${addonTags}</div>
                     </div>
                     <div class="btn-group">
                         <button class="toggle-btn" onclick="toggleStatus('${key}', '${item.status}')">切換狀態</button>
@@ -177,6 +212,12 @@
             document.getElementById('preview').style.display = 'block';
             document.getElementById('uploadPrompt').style.display = 'none';
             document.getElementById('formTitle').innerText = "🟡 正在修改：" + item.name;
+            
+            // 回填勾選內容
+            document.querySelectorAll('input[name="addon"]').forEach(cb => {
+                cb.checked = (item.addons || []).includes(cb.value);
+            });
+            
             window.scrollTo(0, 0);
         });
     }
