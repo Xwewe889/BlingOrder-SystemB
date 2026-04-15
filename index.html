@@ -20,11 +20,14 @@
         .food-img-box img { width: 100%; aspect-ratio: 1/1; object-fit: cover; cursor: pointer; }
         .food-info { padding: 10px; display: flex; flex-direction: column; flex-grow: 1; }
         .food-name { font-weight: bold; font-size: 15px; color: #333; height: 42px; overflow: hidden; cursor: pointer; }
+        .food-desc { font-size: 12px; color: #888; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .food-price { color: var(--primary-pink); font-weight: 800; font-size: 16px; margin: 5px 0; }
         .addon-group { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; min-height: 30px; }
         .addon-btn { font-size: 11px; padding: 6px 10px; border: 1px solid #eee; border-radius: 12px; cursor: pointer; background: #fdfdfd; color: #888; }
         .addon-btn.selected { background: var(--primary-pink); color: white; border-color: var(--primary-pink); font-weight: bold; }
+        .addon-btn.disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
         .btn-add-cart { background: var(--primary-pink); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: auto; }
+        .btn-free { background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 5px; width: 100%; }
         #detail-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
         .detail-modal { background: white; width: 100%; max-width: 400px; border-radius: 20px; overflow: hidden; position: relative; }
         .close-detail { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.5); color: white; border: none; width: 35px; height: 35px; border-radius: 50%; font-size: 20px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -35,6 +38,11 @@
         .cart-modal { background: white; width: 88%; max-height: 75%; border-radius: 20px; padding: 25px 20px; overflow-y: auto; }
         .cart-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
         .qty-badge { background: var(--primary-pink); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
+        /* 吸飽飽飯套餐選擇區 */
+        .drink-swap-section { margin-top: 10px; padding: 10px; background: #f8f8f8; border-radius: 10px; }
+        .drink-swap-title { font-size: 13px; font-weight: bold; color: #666; margin-bottom: 8px; }
+        .drink-option { display: inline-block; padding: 6px 12px; margin: 3px; border: 1px solid #ddd; border-radius: 20px; font-size: 12px; cursor: pointer; }
+        .drink-option.selected { background: var(--primary-pink); color: white; border-color: var(--primary-pink); }
     </style>
 </head>
 <body>
@@ -71,13 +79,13 @@
 
     let menuData = []; let myCart = []; let currentSelections = {}; 
     const groupTemp = ["冰", "去冰", "熱"]; const groupSugar = ["無糖", "加糖"];
+    let currentSwapDrink = null; // 吸飽飽飯換飲料
 
-    // 關鍵修正：讀取路徑改為 menu_v2_beta，對接 2_menu-edit.html
+    // 讀取路徑改為 menu_v2_beta
     db.ref('menu_v2_beta').on('value', snap => {
         menuData = []; const cats = new Set();
         snap.forEach(child => {
             const val = child.val(); val.id = child.key;
-            // 只顯示「在售」的產品
             if (val.status !== "售完") {
                 menuData.push(val);
                 if(val.category) cats.add(val.category);
@@ -97,24 +105,74 @@
         const container = document.getElementById('menu-container');
         let html = "";
         items.forEach(i => {
+            // 檢查是否為吸飽飽飯
+            const isXibao = i.name && i.name.includes('吸飽飽飯');
+            // 檢查是否為飲品
+            const isDrink = i.category === "飲品";
+            // 檢查是否能選擇甜度/冰量 (noIce, noSugar, isVegan)
+            const canIce = !i.noIce && isDrink;
+            const canSugar = !i.noSugar && isDrink;
+            const canVegan = i.isVegan;
+            
             html += `
                 <div class="food-card">
                     <div class="food-img-box" onclick="openDetail('${i.id}')"><img src="${i.image}" onerror="this.src='https://placehold.co/300?text=None'"></div>
                     <div class="food-info">
                         <span class="food-name" onclick="openDetail('${i.id}')">${i.name}</span>
+                        ${i.description ? `<div class="food-desc">${i.description}</div>` : ''}
                         <span class="food-price">$${i.price}</span>
                         <div class="addon-group">
-                            ${(i.category === "飲品") ? `
+                            ${(canIce) ? `
                                 <div class="addon-btn" id="btn-${i.id}-冰" onclick="setOpt(event,'${i.id}','冰')">冰</div>
                                 <div class="addon-btn" id="btn-${i.id}-去冰" onclick="setOpt(event,'${i.id}','去冰')">去冰</div>
                                 <div class="addon-btn" id="btn-${i.id}-熱" onclick="setOpt(event,'${i.id}','熱')">熱</div>
                             ` : ''}
+                            ${(canSugar && !canIce) ? `
+                                <div class="addon-btn" id="btn-${i.id}-無糖" onclick="setOpt(event,'${i.id}','無糖')">無糖</div>
+                                <div class="addon-btn" id="btn-${i.id}-加糖" onclick="setOpt(event,'${i.id}','加糖')">加糖</div>
+                            ` : ''}
+                            ${(canVegan) ? `<span style="font-size:11px;background:#4CAF50;color:white;padding:3px 8px;border-radius:10px;">五辛素</span>` : ''}
                         </div>
-                        <button class="btn-add-cart" onclick="addCart('${i.id}', '${i.name}', ${i.price}, '${i.category||'一般'}')">加入購物車</button>
+                        ${isXibao ? `
+                            <div class="drink-swap-section">
+                                <div class="drink-swap-title">🥤 更換飲料（免費升級）</div>
+                                <div id="drink-options-${i.id}">
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '藍寶石蘇打', 0)">藍寶石蘇打</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '奶茶', 0)">奶茶</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '咖啡', 0)">咖啡</div>
+                                </div>
+                                <div id="drink-detail-${i.id}" style="display:none; margin-top:8px;">
+                                    <select id="temp-${i.id}" style="padding:5px; margin-right:5px;">
+                                        <option value="冰">冰</option>
+                                        <option value="去冰">去冰</option>
+                                        <option value="熱">熱</option>
+                                    </select>
+                                    <select id="sugar-${i.id}" style="padding:5px;">
+                                        <option value="無糖">無糖</option>
+                                        <option value="加糖">加糖</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ` : ''}
+                        <button class="btn-add-cart" onclick="addCart('${i.id}', '${i.name}', ${i.price}, '${i.category||'一般'}', '${i.shortName||i.name}')">加入購物車</button>
+                        <button class="btn-free" onclick="addFreeOrder('${i.id}', '${i.name}', ${i.price}, '${i.category||'一般'}')">招待</button>
                     </div>
                 </div>`;
         });
         container.innerHTML = html;
+    }
+
+    // 吸飽飽飯選飲料
+    function selectSwapDrink(itemId, drinkName, extraPrice) {
+        currentSwapDrink = { name: drinkName, price: extraPrice, temp: '冰', sugar: '無糖' };
+        document.querySelectorAll(`#drink-options-${itemId} .drink-option`).forEach(btn => btn.classList.remove('selected'));
+        event.target.classList.add('selected');
+        document.getElementById(`drink-detail-${itemId}`).style.display = 'block';
+        // 監聽選項變更
+        setTimeout(() => {
+            document.getElementById(`temp-${itemId}`).onchange = function() { currentSwapDrink.temp = this.value; };
+            document.getElementById(`sugar-${itemId}`).onchange = function() { currentSwapDrink.sugar = this.value; };
+        }, 100);
     }
 
     function openDetail(id) {
@@ -140,15 +198,43 @@
         e.target.classList.add('selected');
     }
 
-    function addCart(id, name, price, category) {
+    function addCart(id, name, price, category, shortName) {
         const sel = currentSelections[id] || [];
-        const finalName = sel.length > 0 ? `${name} (${sel.sort().join('/')})` : name;
+        let finalName = name;
+        let items = [{ name: name, price: price, category: category, count: 1, shortName: shortName }];
+        
+        // 如果有選飲料（吸飽飽飯）
+        if (currentSwapDrink && name.includes('吸飽飽飯')) {
+            const drinkFullName = `${currentSwapDrink.name} (${currentSwapDrink.temp}/${currentSwapDrink.sugar})`;
+            finalName = `${name} + ${drinkFullName}`;
+            items.push({ name: drinkFullName, price: 0, category: "飲品", count: 1, shortName: currentSwapDrink.name });
+            currentSwapDrink = null;
+        } else if (sel.length > 0) {
+            finalName = `${name} (${sel.sort().join('/')})`;
+            items[0].name = finalName;
+        }
+        
         const existing = myCart.find(item => item.name === finalName);
         if (existing) { existing.count += 1; } 
-        else { myCart.push({ name: finalName, price: price, category: category, count: 1 }); }
+        else { myCart.push({ name: finalName, price: price, category: category, count: 1, items: items }); }
         currentSelections[id] = []; 
         document.querySelectorAll(`[id^="btn-${id}-"]`).forEach(btn => btn.classList.remove('selected'));
         updateCart();
+    }
+
+    // 招待功能（免費）
+    function addFreeOrder(id, name, price, category) {
+        if(!confirm(`確定要招待「${name}」嗎？這是免費的。`)) return;
+        const now = Date.now();
+        db.ref('orders_v2/' + now).set({ 
+            tableId: finalTableId, 
+            items: [{ name: name, price: 0, category: category, count: 1, isFree: true }],
+            totalAmount: 0, 
+            payStatus: "免單", 
+            status: "已完成", 
+            timestamp: now,
+            isFreeOrder: true
+        }).then(() => { alert(`已招待「${name}」！`); });
     }
 
     function updateCart() {
@@ -171,9 +257,22 @@
     function sendOrder() {
         if(myCart.length === 0) return;
         const now = Date.now();
+        const allItems = [];
+        myCart.forEach(cartItem => {
+            if (cartItem.items) {
+                cartItem.items.forEach(i => allItems.push(i));
+            } else {
+                allItems.push({ name: cartItem.name, price: cartItem.price, category: cartItem.category, count: cartItem.count });
+            }
+        });
+        
         db.ref('orders_v2/' + now).set({ 
-            tableId: finalTableId, items: myCart, totalAmount: document.getElementById('cart-sum').innerText, 
-            payStatus: "尚未結帳", status: "待處理", timestamp: now 
+            tableId: finalTableId, 
+            items: allItems, 
+            totalAmount: document.getElementById('cart-sum').innerText, 
+            payStatus: "尚未結帳", 
+            status: "待處理", 
+            timestamp: now 
         }).then(() => { alert(`訂單已送出！`); myCart = []; updateCart(); hideCartDetail(); });
     }
     

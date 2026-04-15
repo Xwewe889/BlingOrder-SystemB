@@ -15,6 +15,7 @@
         .rev-info { text-align: right; background: #333; color: white; padding: 10px 20px; border-radius: 12px; }
         .order-list-container { padding: 15px; }
         .order-row { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); border: 2px solid #eee; display: flex; align-items: center; }
+        .order-row.free { border-color: #4CAF50; background: #f1f8f1; }
         .table-box { min-width: 140px; text-align: center; border-right: 3px solid #eee; margin-right: 25px; }
         .table-text { font-size: 36px; font-weight: 900; color: #333; }
         .table-text.booth { color: var(--primary-pink); }
@@ -22,24 +23,38 @@
         .item-detail { font-size: 28px; font-weight: 800; color: #000; line-height: 1.5; }
         .cat-tag { font-size: 14px; background: #f0f0f0; padding: 2px 8px; border-radius: 6px; margin-right: 8px; color: #888; vertical-align: middle; }
         .item-count { color: var(--primary-pink); margin-left: 10px; font-size: 30px; }
-        .action-box { min-width: 250px; text-align: right; margin-left: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .action-box { min-width: 280px; text-align: right; margin-left: 20px; display: flex; flex-direction: column; gap: 10px; }
         .btn-base { border: none; padding: 15px; border-radius: 12px; font-size: 22px; font-weight: 900; cursor: pointer; transition: 0.2s; }
         .btn-pay { background: #ffc107; color: #333; box-shadow: 0 4px 0 #d39e00; }
         .btn-pay.done { background: #e0e0e0; color: #999; box-shadow: none; cursor: default; transform: none; }
         .btn-ship { background: #4caf50; color: white; box-shadow: 0 4px 0 #2e7d32; }
         .btn-ship:active { transform: translateY(4px); box-shadow: 0 1px 0 #2e7d32; }
+        .btn-ship.done { background: #bbb; box-shadow: none; cursor: default; }
+        .btn-delete { background: #f44336; color: white; box-shadow: 0 4px 0 #d32f2f; }
+        .btn-delete:active { transform: translateY(4px); box-shadow: 0 1px 0 #d32f2f; }
         .price-text { font-size: 24px; font-weight: bold; color: var(--primary-pink); margin-bottom: 5px; }
+        .price-text.free { color: #4CAF50; }
         .report-link { display: block; text-align: center; padding: 20px; color: #888; text-decoration: none; font-weight: bold; }
+        .date-selector { padding: 15px; background: white; display: flex; align-items: center; gap: 10px; }
+        .date-selector input { padding: 8px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; }
     </style>
 </head>
 <body>
 <div id="voice-overlay"><button class="start-btn" onclick="initVoice()">啟動系統</button></div>
+
+<div class="date-selector">
+    <label>查看日期：</label>
+    <input type="date" id="date-picker" onchange="loadOrdersByDate()">
+    <button onclick="loadOrdersByDate()" style="padding:8px 16px; background:var(--primary-pink); color:white; border:none; border-radius:8px;">查詢</button>
+</div>
+
 <div class="admin-header">
     <h1 style="margin:0; font-size:24px; color:var(--primary-pink);">💎 1.現場接單看板</h1>
     <div class="rev-info"><div id="rev-val" style="font-size:24px; font-weight:bold;">$0</div></div>
 </div>
 <div class="order-list-container" id="list-box"></div>
 <a href="3_report.html" class="report-link">查看今日報表明細 (3_report.html) ⮕</a>
+<a href="7_daily-log.html" class="report-link">📅 每日記錄 (7_daily-log.html) ⮕</a>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyByCHTRy2BWrWIqHmOnhUUmL-FgvNskBpQ", authDomain: "bling2-20260416.firebaseapp.com", projectId: "bling2-20260416", databaseURL: "https://bling2-20260416-default-rtdb.asia-southeast1.firebasedatabase.app", appId: "1:923590514580:web:a27bb5b3500034e623a181" };
@@ -48,47 +63,99 @@
     let isSystemReady = false; let knownIds = null;
     const todayStr = new Date().toLocaleDateString('zh-TW');
     const catOrder = { "飲品":1, "炸物":2, "昭和小食":3, "甜點":4 };
+    
+    // 設定今天日期
+    document.getElementById('date-picker').valueAsDate = new Date();
 
     function initVoice() { isSystemReady = true; document.getElementById('voice-overlay').style.display='none'; window.speechSynthesis.speak(new SpeechSynthesisUtterance("系統就緒")); }
 
-    db.ref('orders_v2').on('value', snap => {
-        const listBox = document.getElementById('list-box'); listBox.innerHTML = "";
-        let todaySum = 0; let shouldSpeak = false; let currentIds = new Set();
-        snap.forEach(child => {
-            const o = child.val(); const id = child.key;
-            const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
-            if (orderDate === todayStr) {
-                // 修正：強制轉換為數字 Number()，避免 0870150 這種字串串接錯誤
-                if (o.payStatus === "已結帳" || o.payStatus === "免單") {
-                    todaySum += Number(o.totalAmount || 0);
+    function loadOrdersByDate() {
+        const selectedDate = document.getElementById('date-picker').value;
+        if (!selectedDate) return;
+        
+        const dateObj = new Date(selectedDate);
+        const dateStr = dateObj.toLocaleDateString('zh-TW');
+        
+        db.ref('orders_v2').on('value', snap => {
+            const listBox = document.getElementById('list-box'); 
+            listBox.innerHTML = "";
+            let todaySum = 0; 
+            let shouldSpeak = false; 
+            let currentIds = new Set();
+            
+            snap.forEach(child => {
+                const o = child.val(); 
+                const id = child.key;
+                const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
+                
+                if (orderDate === dateStr) {
+                    // 只有已結帳或免單才計入營收（修復Bug #9）
+                    if (o.payStatus === "已結帳" || o.payStatus === "免單") {
+                        todaySum += Number(o.totalAmount || 0);
+                    }
+                    
+                    if (o.status !== "已出餐") {
+                        currentIds.add(id);
+                        if (knownIds !== null && !knownIds.has(id) && dateStr === todayStr) shouldSpeak = true;
+                        
+                        const isB = (o.tableId == "包廂" || o.tableId == "7");
+                        const isPaid = (o.payStatus === "已結帳" || o.payStatus === "免單");
+                        const isFreeOrder = o.isFreeOrder === true;
+                        
+                        // 顯示簡稱給內場（功能 #4）
+                        const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
+                        const itemsHtml = sortedItems.map(i => {
+                            const displayName = i.shortName || i.name; // 使用簡稱
+                            return `<div><span class="cat-tag">${i.category||'一般'}</span>${displayName}<span class="item-count">x ${i.count||1}</span></div>`;
+                        }).join('');
+                        
+                        listBox.innerHTML = `
+                            <div class="order-row ${isFreeOrder ? 'free' : ''}">
+                                <div class="table-box"><div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : (o.tableId || '外送') + '桌'}</div></div>
+                                <div class="items-box"><div class="item-detail">${itemsHtml}</div></div>
+                                <div class="action-box">
+                                    <div class="price-text ${isFreeOrder ? 'free' : ''}">${isFreeOrder ? '免費' : '$' + (o.totalAmount || 0)}</div>
+                                    ${isFreeOrder ? '' : `
+                                    <button class="btn-base btn-pay ${isPaid ? 'done' : ''}" onclick="${isPaid ? '' : `payOrder('${id}')`}"> ${isPaid ? `✓ ${o.payStatus}` : '現金結帳'} </button>
+                                    <button class="btn-base btn-ship ${o.status === '已出餐' ? 'done' : ''}" onclick="${o.status === '已出餐' ? '' : `shipOrder('${id}')`}"> ${o.status === '已出餐' ? '✓ 已出餐' : '已出餐'} </button>
+                                    `}
+                                    <button class="btn-base btn-delete" onclick="deleteOrder('${id}')">🗑 刪除</button>
+                                </div>
+                            </div>` + listBox.innerHTML;
+                    }
                 }
-                if (o.status !== "已出餐") {
-                    currentIds.add(id);
-                    if (knownIds !== null && !knownIds.has(id)) shouldSpeak = true;
-                    const isB = (o.tableId == "包廂" || o.tableId == "7");
-                    const isPaid = (o.payStatus === "已結帳" || o.payStatus === "免單");
-                    const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
-                    listBox.innerHTML = `
-                        <div class="order-row">
-                            <div class="table-box"><div class="table-text ${isB ? 'booth' : ''}">${isB ? '💎包廂' : (o.tableId || '外送') + '桌'}</div></div>
-                            <div class="items-box"><div class="item-detail">${sortedItems.map(i => `<div><span class="cat-tag">${i.category||'一般'}</span>${i.name}<span class="item-count">x ${i.count||1}</span></div>`).join('')}</div></div>
-                            <div class="action-box">
-                                <div class="price-text">$${o.totalAmount || 0}</div>
-                                <button class="btn-base btn-pay ${isPaid ? 'done' : ''}" onclick="${isPaid ? '' : `payOrder('${id}')`}"> ${isPaid ? `✓ ${o.payStatus}` : '現金結帳'} </button>
-                                <button class="btn-base btn-ship" onclick="shipOrder('${id}')">已出餐</button>
-                            </div>
-                        </div>` + listBox.innerHTML;
-                }
-            }
+            });
+            
+            if (knownIds === null) { knownIds = currentIds; } 
+            else { if (shouldSpeak && isSystemReady) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance("新訂單")); } knownIds = currentIds; }
+            
+            document.getElementById('rev-val').innerText = "$" + todaySum.toLocaleString();
         });
-        if (knownIds === null) { knownIds = currentIds; } 
-        else { if (shouldSpeak && isSystemReady) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance("新訂單")); } knownIds = currentIds; }
-        // 營收數字格式化
-        document.getElementById('rev-val').innerText = "$" + todaySum.toLocaleString();
-    });
+    }
 
-    function payOrder(id) { if(confirm("標記為已結帳？")) db.ref('orders_v2/' + id).update({ payStatus: "已結帳" }); }
-    function shipOrder(id) { db.ref('orders_v2/' + id).update({ status: "已出餐" }); }
+    // 結帳（功能 #5）
+    function payOrder(id) { 
+        if(confirm("標記為已結帳？")) {
+            db.ref('orders_v2/' + id).update({ payStatus: "已結帳" }); 
+        }
+    }
+    
+    // 出餐（功能 #9 - 修復）
+    function shipOrder(id) { 
+        db.ref('orders_v2/' + id).update({ status: "已出餐" }); 
+    }
+    
+    // 刪除訂單（功能 #5）
+    function deleteOrder(id) {
+        if(confirm("確定要刪除這筆訂單嗎？")) {
+            db.ref('orders_v2/' + id).remove().then(() => {
+                alert("訂單已刪除");
+            });
+        }
+    }
+
+    // 初始載入今天的訂單
+    loadOrdersByDate();
 </script>
 </body>
 </html>

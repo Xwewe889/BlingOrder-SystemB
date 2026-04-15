@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>BlingOrder | 7.每日記錄</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: "PingFang TC", sans-serif; background: #f0f4f8; padding: 20px; }
+        .card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { color: #2196F3; border-left: 5px solid #2196F3; padding-left: 15px; margin-bottom: 25px; }
+        .selector { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .selector select, .selector button { padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; }
+        .selector button { background: #2196F3; color: white; border: none; cursor: pointer; }
+        .month-stats { background: #e3f2fd; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .month-stats h3 { margin: 0 0 15px 0; color: #1565C0; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #bbdefb; }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: #666; }
+        .stat-value { font-weight: bold; color: #1565C0; }
+        .day-row { background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px; cursor: pointer; border: 1px solid #e0e0e0; }
+        .day-row:hover { background: #f5f5f5; }
+        .day-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .day-date { color: #333; }
+        .day-amount { color: #2196F3; }
+        .day-summary { font-size: 14px; color: #666; }
+        .order-detail { display: none; padding: 15px; background: #f9f9f9; border-radius: 8px; margin-top: 10px; }
+        .order-detail.show { display: block; }
+        .order-item { padding: 8px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        .order-time { color: #888; font-size: 13px; width: 60px; }
+        .order-content { flex-grow: 1; }
+        .order-price { font-weight: bold; color: #2196F3; }
+        .no-data { text-align: center; padding: 40px; color: #999; }
+        .back-link { display: inline-block; padding: 10px 20px; background: #666; color: white; text-decoration: none; border-radius: 8px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <a href="1_admin.html" class="back-link">⬅️ 返回接單看板</a>
+    
+    <div class="card">
+        <h2>📅 每日記錄</h2>
+        
+        <div class="selector">
+            <select id="year-select"></select>
+            <select id="month-select"></select>
+            <button onclick="loadDailyLog()">查詢</button>
+        </div>
+
+        <div class="month-stats" id="month-stats" style="display:none;">
+            <h3 id="stats-title">2026年4月</h3>
+            <div class="stat-row"><span class="stat-label">總訂單數</span><span class="stat-value" id="stat-orders">0</span></div>
+            <div class="stat-row"><span class="stat-label">總營收</span><span class="stat-value" id="stat-revenue">$0</span></div>
+            <div class="stat-row"><span class="stat-label">免單金額</span><span class="stat-value" id="stat-free">$0</span></div>
+            <div class="stat-row"><span class="stat-label">實際收入</span><span class="stat-value" id="stat-actual">$0</span></div>
+        </div>
+
+        <div id="daily-list"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = { 
+            apiKey: "AIzaSyByCHTRy2BWrWIqHmOnhUUmL-FgvNskBpQ", 
+            authDomain: "bling2-20260416.firebaseapp.com", 
+            projectId: "bling2-20260416", 
+            databaseURL: "https://bling2-20260416-default-rtdb.asia-southeast1.firebasedatabase.app", 
+            appId: "1:923590514580:web:a27bb5b3500034e623a181" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        // 初始化年份和月份選單
+        const now = new Date();
+        const yearSelect = document.getElementById('year-select');
+        const monthSelect = document.getElementById('month-select');
+        
+        for (let y = now.getFullYear(); y >= 2024; y--) {
+            yearSelect.add(new Option(y + '年', y));
+        }
+        for (let m = 1; m <= 12; m++) {
+            monthSelect.add(new Option(m + '月', m));
+        }
+        yearSelect.value = now.getFullYear();
+        monthSelect.value = now.getMonth() + 1;
+
+        function loadDailyLog() {
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            
+            document.getElementById('stats-title').innerText = `${year}年${month}月`;
+            document.getElementById('month-stats').style.display = 'block';
+            
+            db.ref('orders_v2').once('value', snap => {
+                const dailyData = {};
+                let totalOrders = 0, totalRevenue = 0, totalFree = 0;
+                
+                snap.forEach(child => {
+                    const o = child.val();
+                    const orderDate = new Date(parseInt(o.timestamp || child.key));
+                    
+                    if (orderDate.getFullYear() === year && orderDate.getMonth() + 1 === month) {
+                        const day = orderDate.getDate();
+                        if (!dailyData[day]) dailyData[day] = { orders: [], revenue: 0, free: 0 };
+                        
+                        dailyData[day].orders.push({ ...o, id: child.key });
+                        
+                        const amount = Number(o.totalAmount || 0);
+                        if (o.payStatus === "免單") {
+                            dailyData[day].free += amount;
+                            totalFree += amount;
+                        } else if (o.payStatus === "已結帳") {
+                            dailyData[day].revenue += amount;
+                            totalRevenue += amount;
+                        }
+                        totalOrders++;
+                    }
+                });
+                
+                // 更新統計
+                document.getElementById('stat-orders').innerText = totalOrders;
+                document.getElementById('stat-revenue').innerText = '$' + totalRevenue.toLocaleString();
+                document.getElementById('stat-free').innerText = '$' + totalFree.toLocaleString();
+                document.getElementById('stat-actual').innerText = '$' + totalRevenue.toLocaleString();
+                
+                // 顯示每日列表
+                const listContainer = document.getElementById('daily-list');
+                const days = Object.keys(dailyData).sort((a,b) => b - a);
+                
+                if (days.length === 0) {
+                    listContainer.innerHTML = '<div class="no-data">本月尚無資料</div>';
+                    return;
+                }
+                
+                let html = '';
+                days.forEach(day => {
+                    const d = dailyData[day];
+                    const orderCount = d.orders.length;
+                    const items = d.orders.map(o => o.items ? o.items.length : 0).reduce((a,b) => a+b, 0);
+                    const dateStr = `${month}/${day}`;
+                    
+                    html += `
+                        <div class="day-row" onclick="toggleDay(${day})">
+                            <div class="day-header">
+                                <span class="day-date">📅 ${dateStr}</span>
+                                <span class="day-amount">$${d.revenue.toLocaleString()} (${orderCount}筆)</span>
+                            </div>
+                            <div class="day-summary">${items}項餐點 ${d.free > 0 ? '| 免單 $' + d.free : ''}</div>
+                            <div class="order-detail" id="day-${day}">
+                                ${d.orders.sort((a,b) => (b.timestamp||b.id) - (a.timestamp||a.id)).map(o => {
+                                    const t = new Date(parseInt(o.timestamp||o.id));
+                                    const time = t.toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+                                    const itemsList = (o.items||[]).map(i => `${i.name}x${i.count}`).join(', ');
+                                    const status = o.payStatus === "免單" ? '<span style="color:#4CAF50">免單</span>' : (o.payStatus === "已結帳" ? '<span style="color:#9b87f5">已結帳</span>' : '未結帳');
+                                    return `<div class="order-item">
+                                        <span class="order-time">${time}</span>
+                                        <span class="order-content">${o.tableId}桌 - ${itemsList}</span>
+                                        <span class="order-price">${o.payStatus === "免單" ? '免費' : '$'+(o.totalAmount||0)}</span>
+                                    </div>`;
+                                }).join('')}
+                            </div>
+                        </div>`;
+                });
+                
+                listContainer.innerHTML = html;
+            });
+        }
+
+        function toggleDay(day) {
+            const el = document.getElementById('day-' + day);
+            el.classList.toggle('show');
+        }
+
+        // 初始載入
+        loadDailyLog();
+    </script>
+</body>
+</html>

@@ -17,11 +17,23 @@
         td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
         .tag-free { color: #4CAF50; font-weight: bold; }
         .tag-paid { color: #9b87f5; font-weight: bold; }
+        .date-selector { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .date-selector input, .date-selector select { padding: 8px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; }
+        .date-selector button { padding: 8px 16px; background: #9b87f5; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-delete { background: #f44336; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h2>🗓️ 3.今日營收明細 (V2)</h2>
+        <h2>🗓️ 3.營收明細 (V2)</h2>
+        
+        <div class="date-selector">
+            <label>查詢日期：</label>
+            <input type="date" id="date-picker">
+            <button onclick="loadReport()">查詢</button>
+            <span style="margin-left:10px; color:#888; font-size:13px;">（可查詢近7天）</span>
+        </div>
+
         <div class="sum-box">
             <span class="sum-label">今日實收營收</span>
             <b class="sum-value" id="real">$ 0</b>
@@ -35,10 +47,11 @@
                     <th>金額</th>
                     <th>狀態</th>
                     <th>品項內容</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody id="report-body">
-                </tbody>
+            </tbody>
         </table>
     </div>
 
@@ -52,44 +65,75 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const todayStr = new Date().toLocaleDateString('zh-TW');
+        
+        // 設定今天日期
+        document.getElementById('date-picker').valueAsDate = new Date();
+        
+        // 載入7天內的日期
+        function loadReport() {
+            const selectedDate = document.getElementById('date-picker').value;
+            if (!selectedDate) return;
+            
+            const dateObj = new Date(selectedDate);
+            const dateStr = dateObj.toLocaleDateString('zh-TW');
+            
+            // 檢查是否超過7天
+            const now = new Date();
+            const diffDays = Math.floor((now - dateObj) / (1000 * 60 * 60 * 24));
+            if (diffDays > 7) {
+                alert("只能查詢近7天的資料");
+                return;
+            }
 
-        db.ref('orders_v2').on('value', snap => {
-            const tbody = document.getElementById('report-body');
-            tbody.innerHTML = '';
-            let totalReal = 0; // 強制初始化為數字 0
+            db.ref('orders_v2').on('value', snap => {
+                const tbody = document.getElementById('report-body');
+                tbody.innerHTML = '';
+                let totalReal = 0;
 
-            snap.forEach(child => {
-                const o = child.val();
-                const id = child.key;
-                const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
+                snap.forEach(child => {
+                    const o = child.val();
+                    const id = child.key;
+                    const orderDate = new Date(parseInt(o.timestamp || id)).toLocaleDateString('zh-TW');
 
-                if (orderDate === todayStr) {
-                    const isPaid = (o.payStatus === "已結帳");
-                    const isFree = (o.payStatus === "免單");
+                    if (orderDate === dateStr) {
+                        const isPaid = (o.payStatus === "已結帳");
+                        const isFree = (o.payStatus === "免單");
 
-                    // 核心修正：使用 Number() 確保數值相加，不產生 0870150
-                    if (isPaid || isFree) {
-                        totalReal += Number(o.totalAmount || 0);
+                        // 只有已結帳或免單才計入營收（功能 #9）
+                        if (isPaid || isFree) {
+                            totalReal += Number(o.totalAmount || 0);
+                        }
+
+                        const timeStr = new Date(parseInt(o.timestamp || id)).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+                        const itemsStr = (o.items || []).map(i => `${i.name}x${i.count}`).join('、');
+
+                        tbody.innerHTML = `
+                            <tr>
+                                <td>${timeStr}</td>
+                                <td>${o.tableId || '-'}</td>
+                                <td>${isFree ? '<span class="tag-free">免單</span>' : '$' + (o.totalAmount || 0)}</td>
+                                <td>${isPaid ? '<span class="tag-paid">已結帳</span>' : (isFree ? '<span class="tag-free">免單</span>' : '尚未結帳')}</td>
+                                <td>${itemsStr}</td>
+                                <td><button class="btn-delete" onclick="deleteOrder('${id}')">🗑 刪除</button></td>
+                            </tr>` + tbody.innerHTML;
                     }
+                });
 
-                    const timeStr = new Date(parseInt(o.timestamp || id)).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-                    const itemsStr = (o.items || []).map(i => `${i.name}x${i.count}`).join('、');
-
-                    tbody.innerHTML = `
-                        <tr>
-                            <td>${timeStr}</td>
-                            <td>${o.tableId || '外帶'}</td>
-                            <td style="font-weight:bold;">$ ${o.totalAmount}</td>
-                            <td class="${isFree ? 'tag-free' : 'tag-paid'}">${o.payStatus}</td>
-                            <td style="color:#666; font-size:12px;">${itemsStr}</td>
-                        </tr>` + tbody.innerHTML;
-                }
+                document.getElementById('real').innerText = "$ " + totalReal.toLocaleString();
             });
+        }
 
-            // 顯示格式化後的金額
-            document.getElementById('real').innerText = '$ ' + totalReal.toLocaleString();
-        });
+        // 刪除訂單（功能 #5）
+        function deleteOrder(id) {
+            if(confirm("確定要刪除這筆訂單嗎？")) {
+                db.ref('orders_v2/' + id).remove().then(() => {
+                    alert("訂單已刪除");
+                });
+            }
+        }
+
+        // 初始載入
+        loadReport();
     </script>
 </body>
 </html>
