@@ -225,10 +225,28 @@
         let items = [{ name: name, price: price, category: category, count: 1, shortName: shortName }];
         
         // 如果有選飲料（吸飽飽飯）
-        if (currentSwapDrink && name.includes('吸飽飽飯')) {
-            const drinkFullName = `${currentSwapDrink.name} (${currentSwapDrink.temp}/${currentSwapDrink.sugar})`;
-            finalName = `${name} + ${drinkFullName}`;
-            items.push({ name: drinkFullName, price: 0, category: "飲品", count: 1, shortName: currentSwapDrink.name });
+        if (currentSwapDrink && (name.includes('吸飽飽飯') || name.includes('吸飽飽蛋飯'))) {
+            // 根據飲料類型產生簡稱
+            let drinkShortName = currentSwapDrink.name;
+            if (currentSwapDrink.name.includes('藍寶石') || currentSwapDrink.name.includes('紅寶石') || 
+                currentSwapDrink.name.includes('黃寶石') || currentSwapDrink.name.includes('綠寶石')) {
+                drinkShortName = '藍寶石'; // 蘇打類統稱
+            } else if (currentSwapDrink.name.includes('咖啡') && currentSwapDrink.name.includes('拿鐵')) {
+                drinkShortName = '拿鐵';
+            } else if (currentSwapDrink.name.includes('咖啡')) {
+                drinkShortName = '咖啡';
+            } else if (currentSwapDrink.name.includes('奶茶')) {
+                drinkShortName = '奶茶';
+            }
+            
+            // 顯示名稱（完整）
+            let drinkDisplay = currentSwapDrink.name;
+            if (currentSwapDrink.type !== 'soda') {
+                drinkDisplay += ` (${currentSwapDrink.temp}/${currentSwapDrink.sugar})`;
+            }
+            
+            finalName = `${name} + ${drinkDisplay}`;
+            items.push({ name: drinkDisplay, price: 0, category: "飲品", count: 1, shortName: drinkShortName });
             currentSwapDrink = null;
         } else if (sel.length > 0) {
             finalName = `${name} (${sel.sort().join('/')})`;
