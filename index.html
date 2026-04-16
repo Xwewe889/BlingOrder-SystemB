@@ -61,8 +61,8 @@
     </div>
 
     <div class="cart-bar" id="cart-ui" onclick="showCartDetail()">
-        <div style="flex-grow: 1; font-size: 16px;">🛒 <span id="cart-qty">0</span> 項 | <span id="cart-sum">0</span>元</div>
-        <button onclick="event.stopPropagation(); sendOrder()" style="background:var(--primary-pink); color:white; border:none; padding:10px 22px; border-radius:20px; font-weight:bold;">送出訂單</button>
+        <div style="flex-grow: 1; font-size: 16px;">🛒 <span id="cart-qty">0</span> 項 | <span id="cart-sum">0</span>元 <span style="font-size:12px;color:#aaa;">（點擊查看購物車）</span></div>
+        <button onclick="event.stopPropagation(); confirmOrder()" style="background:var(--primary-pink); color:white; border:none; padding:10px 22px; border-radius:20px; font-weight:bold;">送出訂單</button>
     </div>
 
     <div id="cart-detail-overlay" onclick="hideCartDetail()"><div class="cart-modal" onclick="event.stopPropagation()"><h3 style="color:var(--primary-pink); text-align:center; margin-top:0;">📋 點餐清單</h3><div id="cart-list"></div><button onclick="hideCartDetail()" style="width:100%; margin-top:20px; padding:15px; background:var(--primary-pink); color:white; border:none; border-radius:12px; font-weight:bold;">繼續點餐</button></div></div>
@@ -301,6 +301,16 @@
     function removeFromCart(index) { myCart.splice(index, 1); updateCart(); if(myCart.length === 0) hideCartDetail(); }
     function showCartDetail() { document.getElementById('cart-detail-overlay').style.display = 'flex'; }
     function hideCartDetail() { document.getElementById('cart-detail-overlay').style.display = 'none'; }
+    
+    // 確認訂單彈窗
+    function confirmOrder() {
+        if(myCart.length === 0) return;
+        const total = document.getElementById('cart-sum').innerText;
+        const items = myCart.map(i => i.name + (i.count > 1 ? ` x${i.count}` : '')).join('\n');
+        if(confirm(`📋 確認訂單？\n\n${items}\n\n💰 總金額：${total}元\n\n⚠️ 請先至櫃台結帳`)) {
+            sendOrder();
+        }
+    }
     
     function sendOrder() {
         if(myCart.length === 0) return;
