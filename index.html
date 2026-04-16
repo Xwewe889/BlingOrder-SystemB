@@ -105,8 +105,8 @@
         const container = document.getElementById('menu-container');
         let html = "";
         items.forEach(i => {
-            // 檢查是否為吸飽飽飯（可換飲料）
-            const isXibao = i.addons && i.addons.includes('可換飲料');
+            // 檢查是否為吸飽飽飯（可換飲料）- 從名稱或選項判斷
+            const isXibao = (i.addons && i.addons.includes('可換飲料')) || (i.name && i.name.includes('吸飽飽'));
             // 檢查是否為飲品
             const isDrink = i.category === "飲品";
             // 檢查是否能選擇甜度/冰量 (noIce, noSugar, isVegan)
