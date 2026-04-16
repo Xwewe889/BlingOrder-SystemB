@@ -137,9 +137,16 @@
                             <div class="drink-swap-section">
                                 <div class="drink-swap-title">🥤 更換飲料（免費升級）</div>
                                 <div id="drink-options-${i.id}">
-                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '藍寶石蘇打', 0)">藍寶石蘇打</div>
-                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '奶茶', 0)">奶茶</div>
-                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '咖啡', 0)">咖啡</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '藍寶石蘇打', 0, 'soda')">藍寶石蘇打</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '紅寶石蘇打', 0, 'soda')">紅寶石蘇打</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '黃寶石蘇打', 0, 'soda')">黃寶石蘇打</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '綠寶石蘇打', 0, 'soda')">綠寶石蘇打</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '昭和夜晚漂浮飲', 0, 'soda')">昭和夜晚漂浮飲</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '朝和之露．柚香乳酸', 0, 'soda')">朝和之露．柚香乳酸</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '琥珀濃厚奶茶', 0, 'milktea')">琥珀濃厚奶茶</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '大正浪漫鮮奶茶', 0, 'milktea')">大正浪漫鮮奶茶</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '昭和奶油女孩咖啡', 0, 'coffee')">昭和奶油女孩咖啡</div>
+                                    <div class="drink-option" onclick="selectSwapDrink('${i.id}', '昭和奶油女孩拿鐵', 0, 'coffee')">昭和奶油女孩拿鐵</div>
                                 </div>
                                 <div id="drink-detail-${i.id}" style="display:none; margin-top:8px;">
                                     <select id="temp-${i.id}" style="padding:5px; margin-right:5px;">
@@ -162,12 +169,27 @@
     }
 
     // 吸飽飽飯選飲料
-    function selectSwapDrink(itemId, drinkName, extraPrice) {
-        currentSwapDrink = { name: drinkName, price: extraPrice, temp: '冰', sugar: '無糖' };
+    function selectSwapDrink(itemId, drinkName, extraPrice, drinkType) {
+        currentSwapDrink = { name: drinkName, price: extraPrice, temp: '冰', sugar: '無糖', type: drinkType };
         document.querySelectorAll(`#drink-options-${itemId} .drink-option`).forEach(btn => btn.classList.remove('selected'));
         event.target.classList.add('selected');
-        document.getElementById(`drink-detail-${itemId}`).style.display = 'block';
-        // 監聽選項變更
+        
+        // 蘇打類、漂浮飲、柚香乳酸：無選項
+        // 奶茶類（琥珀、大正）：可選冰/去冰/熱，預設冰
+        // 咖啡類（奶油女孩咖啡/拿鐵）：可選冰/去冰/熱 + 加糖/不加糖，預設冰/無糖
+        const detailDiv = document.getElementById(`drink-detail-${itemId}`);
+        if (drinkType === 'soda') {
+            detailDiv.style.display = 'none';
+        } else if (drinkType === 'milktea') {
+            detailDiv.style.display = 'block';
+            document.getElementById(`temp-${itemId}`).style.display = 'inline-block';
+            document.getElementById(`sugar-${itemId}`).style.display = 'none';
+        } else if (drinkType === 'coffee') {
+            detailDiv.style.display = 'block';
+            document.getElementById(`temp-${itemId}`).style.display = 'inline-block';
+            document.getElementById(`sugar-${itemId}`).style.display = 'inline-block';
+        }
+        
         setTimeout(() => {
             document.getElementById(`temp-${itemId}`).onchange = function() { currentSwapDrink.temp = this.value; };
             document.getElementById(`sugar-${itemId}`).onchange = function() { currentSwapDrink.sugar = this.value; };
