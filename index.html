@@ -222,7 +222,15 @@
     function addCart(id, name, price, category, shortName) {
         const sel = currentSelections[id] || [];
         let finalName = name;
-        let items = [{ name: name, price: price, category: category, count: 1, shortName: shortName }];
+        // 自動產生簡稱：如果沒有短稱，就從全稱提取
+        let autoShortName = shortName || name;
+        if (autoShortName.includes('半熟濃韻')) autoShortName = autoShortName.replace('半熟濃韻＊', '');
+        if (autoShortName.includes('半熟濃韻')) autoShortName = autoShortName.replace('半熟濃韻', '');
+        if (autoShortName.includes('昭和')) autoShortName = autoShortName.replace('昭和', '').replace('昭和', '');
+        if (autoShortName.includes('午夜')) autoShortName = autoShortName.replace('午夜', '');
+        if (autoShortName.includes('月見')) autoShortName = autoShortName.replace('月見初雪＊', '');
+        
+        let items = [{ name: name, price: price, category: category, count: 1, shortName: autoShortName }];
         
         // 如果有選飲料（吸飽飽飯）
         if (currentSwapDrink && (name.includes('吸飽飽飯') || name.includes('吸飽飽蛋飯'))) {
@@ -247,6 +255,7 @@
             
             finalName = `${name} + ${drinkDisplay}`;
             items.push({ name: drinkDisplay, price: 0, category: "飲品", count: 1, shortName: drinkShortName });
+            console.log('DEBUG: Adding drink to order:', drinkFullName, 'shortName:', drinkShortName);
             currentSwapDrink = null;
         } else if (sel.length > 0) {
             finalName = `${name} (${sel.sort().join('/')})`;
