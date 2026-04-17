@@ -78,7 +78,7 @@
     document.getElementById('table-label').innerText = tableNum === "7" ? "💎 包廂" : `📍 第 ${tableNum} 桌`;
 
     let menuData = []; let myCart = []; let currentSelections = {}; 
-    const groupTemp = ["冰", "去冰", "熱"]; const groupSugar = ["無糖", "加糖"];
+    const groupTemp = ["冰", "去冰", "熱"]; const groupSugar = ["無糖", "加糖"]; const groupVegan = ["五辛素", "蛋奶素"];
     let currentSwapDrink = null; // 吸飽飽飯換飲料
 
     // 讀取路徑改為 menu_v2_beta
@@ -212,7 +212,7 @@
     function setOpt(e, itemId, val) {
         if(e) e.preventDefault();
         if(!currentSelections[itemId]) currentSelections[itemId] = [];
-        let targetGroup = groupTemp.includes(val) ? groupTemp : (groupSugar.includes(val) ? groupSugar : []);
+        let targetGroup = groupTemp.includes(val) ? groupTemp : (groupSugar.includes(val) ? groupSugar : (groupVegan.includes(val) ? groupVegan : []));
         currentSelections[itemId] = currentSelections[itemId].filter(item => !targetGroup.includes(item));
         currentSelections[itemId].push(val);
         document.querySelectorAll(`[id^="btn-${itemId}-"]`).forEach(btn => {
