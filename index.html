@@ -107,12 +107,11 @@
         items.forEach(i => {
             // 檢查是否為吸飽飽飯（可換飲料）
             const isXibao = i.addons && i.addons.includes('可換飲料');
-            // 檢查是否為飲品
-            const isDrink = i.category === "飲品";
-            // 檢查是否能選擇甜度/冰量 (noIce, noSugar, isVegan)
-            const canIce = !i.noIce && isDrink;
-            const canSugar = !i.noSugar && isDrink;
-            const canVegan = i.isVegan;
+            // 檢查是否有客製化選項（從 addons 陣列）
+            const itemAddons = i.addons || [];
+            const canIce = itemAddons.some(a => ['冰', '去冰', '熱'].includes(a));
+            const canSugar = itemAddons.some(a => ['加糖', '不加糖'].includes(a));
+            const canVegan = itemAddons.some(a => ['五辛素', '蛋奶素'].includes(a));
             
             html += `
                 <div class="food-card">
