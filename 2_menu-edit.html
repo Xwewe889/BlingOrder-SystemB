@@ -53,6 +53,8 @@
         <input type="text" id="itemCategory" placeholder="類別 (如：飲品、昭和小食)">
     </div>
 
+<input type="text" id="itemShortName" placeholder="後台簡稱（顯示給內場看）" style="width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-bottom:15px;font-size:14px;">
+
     <div class="addon-section">
         <span class="addon-title">⚙️ 提供客製化選項 / 素食標記：</span>
         <div class="addon-grid" id="addonContainer">
@@ -134,6 +136,7 @@
             description: document.getElementById('itemDesc').value,
             image: url,
             addons: addons, // 存儲客製化選項陣列
+            shortName: document.getElementById('itemShortName').value || name,
             status: "在售",
             updateTime: new Date().toLocaleString()
         };
@@ -157,6 +160,7 @@
         document.getElementById('itemPrice').value = "";
         document.getElementById('itemCategory').value = "";
         document.getElementById('itemDesc').value = "";
+        document.getElementById('itemShortName').value = "";
         document.getElementById('imageUrl').value = "";
         document.getElementById('preview').style.display = 'none';
         document.getElementById('uploadPrompt').style.display = 'block';
@@ -182,6 +186,7 @@
                     <div class="menu-item-info">
                         <h4>${item.name} ($${item.price}) ${isSoldOut ? '<span style="color:red">[今日售完]</span>' : ''}</h4>
                         <p>${item.category} | ${item.description || ''}</p>
+                        ${item.shortName ? `<p style="color:#6c5ce7;font-size:12px;">後台簡稱：${item.shortName}</p>` : ''}
                         <div class="addon-tags">選項：${addonTags}</div>
                     </div>
                     <div class="btn-group">
@@ -209,6 +214,7 @@
             document.getElementById('itemCategory').value = item.category;
             document.getElementById('itemDesc').value = item.description;
             document.getElementById('imageUrl').value = item.image;
+            document.getElementById('itemShortName').value = item.shortName || '';
             document.getElementById('preview').src = item.image;
             document.getElementById('preview').style.display = 'block';
             document.getElementById('uploadPrompt').style.display = 'none';
