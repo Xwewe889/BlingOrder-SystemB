@@ -339,7 +339,14 @@
             payStatus: "尚未結帳", 
             status: "待處理", 
             timestamp: now 
-        }).then(() => { alert(`訂單已送出！`); myCart = []; updateCart(); hideCartDetail(); });
+        }).then(() => { 
+            console.log('Order sent:', now);
+            alert(`訂單已送出！`); 
+            myCart = []; updateCart(); hideCartDetail(); 
+        }).catch(err => {
+            console.error('Order error:', err);
+            alert('訂單送出失敗：' + err.message);
+        });
     }
     
     function filterCat(c) {
