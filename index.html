@@ -222,6 +222,7 @@
     }
 
     function addCart(id, name, price, category, shortName) {
+        console.log('addCart called:', id, name, currentSwapDrink);
         const sel = currentSelections[id] || [];
         let finalName = name;
         // 自動產生簡稱：如果沒有短稱，就從全稱提取
