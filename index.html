@@ -262,7 +262,7 @@
             
             finalName = `${name} + ${drinkDisplay}`;
             items.push({ name: drinkDisplay, price: 0, category: "飲品", count: 1, shortName: drinkShortName });
-            console.log('DEBUG: Adding drink to order:', drinkFullName, 'shortName:', drinkShortName);
+            console.log('DEBUG: Adding drink to order:', drinkDisplay, 'shortName:', drinkShortName);
             currentSwapDrink = null;
         } else if (sel.length > 0) {
             finalName = `${name} (${sel.join('/')})`;
