@@ -229,6 +229,10 @@
         if (autoShortName.includes('昭和')) autoShortName = autoShortName.replace('昭和', '').replace('昭和', '');
         if (autoShortName.includes('午夜')) autoShortName = autoShortName.replace('午夜', '');
         if (autoShortName.includes('月見')) autoShortName = autoShortName.replace('月見初雪＊', '');
+        if (autoShortName.includes('月見初雪')) autoShortName = autoShortName.replace('月見初雪', '');
+        if (autoShortName.includes('夜月白')) autoShortName = autoShortName.replace('夜月白．', '').replace('夜月白', '');
+        if (autoShortName.includes('．')) autoShortName = autoShortName.replace('．', '');
+        if (autoShortName.includes('＊')) autoShortName = autoShortName.replace('＊', '');
         
         let items = [{ name: name, price: price, category: category, count: 1, shortName: autoShortName }];
         
