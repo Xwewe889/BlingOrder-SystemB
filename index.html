@@ -105,8 +105,8 @@
         const container = document.getElementById('menu-container');
         let html = "";
         items.forEach(i => {
-            // 檢查是否為吸飽飽飯（可換飲料）
-            const isXibao = i.addons && i.addons.includes('可換飲料');
+            // 檢查是否為吸飽飽飯（可換飲料）- 從 addons 或名稱判斷
+            const isXibao = (i.addons && i.addons.includes('可換飲料')) || (i.name && i.name.includes('吸飽飽'));
             // 檢查是否有客製化選項（從 addons 陣列）
             const itemAddons = i.addons || [];
             const canIce = itemAddons.some(a => ['冰', '去冰', '熱'].includes(a));
