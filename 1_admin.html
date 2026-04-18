@@ -4,7 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BlingOrder | 1.接單看板 (V2)</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-app-compat.js">
+    function freeOrder(id) {
+        if(!confirm('確定要招待此訂單嗎？')) return;
+        db.ref('orders_v2/' + id).update({ 
+            payStatus: "免單", 
+            isFreeOrder: true,
+            totalAmount: 0
+        });
+    }
+
+</script>
     <script src="https://www.gstatic.com/firebasejs/9.1.0/firebase-database-compat.js"></script>
     <style>
         :root { --primary-pink: #ff85a2; --bg: #fdfdfd; }
@@ -104,7 +114,9 @@
                         
                         // 顯示簡稱給內場（功能 #4）
                         const sortedItems = [...(o.items||[])].sort((a,b) => (catOrder[a.category]||99) - (catOrder[b.category]||99));
-                        const itemsHtml = sortedItems.map(i => {
+                        // Group items by category #1
+const groupedItems = {};sortedItems.forEach(i=>{const k=i.category||"一般";if(!groupedItems[k])groupedItems[k]=[];groupedItems[k].push(i)});
+const itemsHtml = Object.entries(groupedItems).map(([cat,items])=>"<span class="cat-tag">"+cat+"</span>"+items.map(i=>i.shortName||i.name+"<span class="item-count">x"+(i.count||1)+"</span>").join(",")).join("<br>");
                             const displayName = i.shortName || i.name; // 使用簡稱
                             return `<div><span class="cat-tag">${i.category||'一般'}</span>${displayName}<span class="item-count">x ${i.count||1}</span></div>`;
                         }).join('');
