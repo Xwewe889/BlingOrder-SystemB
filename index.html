@@ -261,7 +261,7 @@
             }
             
             finalName = `${name} + ${drinkDisplay}`;
-            items.push({ name: drinkDisplay, price: 0, category: "飲品", count: 1, shortName: drinkShortName });
+            items.push({ name: drinkDisplay + "[附]", price: 0, category: "飲品", count: 1, shortName: drinkShortName, linkedTo: name });
             console.log('DEBUG: Adding drink to order:', drinkDisplay, 'shortName:', drinkShortName);
             currentSwapDrink = null;
         } else if (sel.length > 0) {
